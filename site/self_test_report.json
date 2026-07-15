@@ -1,0 +1,70 @@
+{
+  "system": "香港六合彩新世代鐵律預測系統",
+  "generated_at": "2026-07-15",
+  "passed": true,
+  "latest_period": "26/076",
+  "latest_date": "2026-07-14",
+  "target_date": "2026-07-16",
+  "checks": [
+    {
+      "name": "official_history_complete",
+      "passed": true,
+      "detail": "4364 draws"
+    },
+    {
+      "name": "official_history_latest",
+      "passed": true,
+      "detail": "26/076 2026-07-14"
+    },
+    {
+      "name": "release_gate",
+      "passed": true,
+      "detail": "{\"passed\": true, \"rule\": \"520期走步驗證須同時通過前段命中與機率校準，且不得由單一模型壟斷\", \"main_edge\": 8.449e-05, \"special_edge\": -3.741e-05, \"main_avg_hits\": 1.4923, \"main_random_hits\": 1.4694, \"special_avg_hits\": 0.075, \"special_random_hits\": 0.0612, \"max_main_weight\": 0.11637139}"
+    },
+    {
+      "name": "walk_forward_520",
+      "passed": true,
+      "detail": "520"
+    },
+    {
+      "name": "main_hit_edge",
+      "passed": true,
+      "detail": "1.4923 > 1.4694"
+    },
+    {
+      "name": "special_hit_edge",
+      "passed": true,
+      "detail": "0.075 > 0.0612"
+    },
+    {
+      "name": "no_model_monopoly",
+      "passed": true,
+      "detail": "0.11637139"
+    },
+    {
+      "name": "candidate_49",
+      "passed": true,
+      "detail": "main/special 49"
+    },
+    {
+      "name": "suggested_sets",
+      "passed": true,
+      "detail": "8 valid sets"
+    },
+    {
+      "name": "artifacts_complete",
+      "passed": true,
+      "detail": "all report and cloud files"
+    },
+    {
+      "name": "report_cloud_sync",
+      "passed": true,
+      "detail": "byte-identical"
+    },
+    {
+      "name": "independent_branding",
+      "passed": true,
+      "detail": "{}"
+    }
+  ]
+}

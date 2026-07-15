@@ -1,0 +1,31 @@
+name: 台灣大樂透新核心自動更新
+on:
+  schedule:
+    - cron: "0 */3 * * *"
+    - cron: "25-55/5 13 * * 2,5"
+    - cron: "0-30/5 14 * * 2,5"
+  workflow_dispatch:
+permissions:
+  contents: write
+concurrency:
+  group: tw649-new-engine
+  cancel-in-progress: false
+jobs:
+  update:
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with: {python-version: "3.12"}
+      - run: pip install numpy==2.3.5
+      - name: 官方抓號、結算、重算、產生戰報
+        run: python update.py
+      - name: 發布前完整檢測
+        run: python verify.py
+      - name: 同步手機雲端
+        run: |
+          git config user.name "tw649-new-engine-bot"
+          git config user.email "actions@github.com"
+          git add data reports site docs
+          git diff --cached --quiet || (git commit -m "大樂透新核心開獎後自動更新" && git push)
