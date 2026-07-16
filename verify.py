@@ -1,5 +1,6 @@
 from __future__ import annotations
 import hashlib,json,sys
+from datetime import date
 from pathlib import Path
 from engine import ROOT,load_draws
 
@@ -9,7 +10,8 @@ def main():
     def add(name,ok,detail): checks.append({"name":name,"passed":bool(ok),"detail":detail})
     draws=load_draws(); analysis=json.loads((ROOT/"reports/latest_analysis.json").read_text(encoding="utf-8"))
     add("official_history_complete",len(draws)>=2152,f"{len(draws)} draws")
-    add("official_history_latest",draws[-1].draw_date=="2026-07-14",f"{draws[-1].period} {draws[-1].draw_date}")
+    latest_age=(date.today()-date.fromisoformat(draws[-1].draw_date)).days
+    add("history_latest_recent",0<=latest_age<=10,f"{draws[-1].period} {draws[-1].draw_date}; age={latest_age} days")
     add("release_gate",analysis["release_gate"]["passed"],json.dumps(analysis["release_gate"],ensure_ascii=False))
     add("walk_forward_520",analysis["backtest"]["main"]["rounds"]==520,str(analysis["backtest"]["main"]["rounds"]))
     add("main_hit_edge",analysis["release_gate"]["main_avg_hits"]>analysis["release_gate"]["main_random_hits"],f"{analysis['release_gate']['main_avg_hits']} > {analysis['release_gate']['main_random_hits']}")
