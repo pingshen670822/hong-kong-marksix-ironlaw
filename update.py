@@ -1,5 +1,5 @@
 from __future__ import annotations
-import csv,json,urllib.parse,urllib.request
+import csv,json,re,urllib.parse,urllib.request
 from datetime import date
 from engine import ROOT,load_draws,analyze
 from report import build_reports
@@ -15,16 +15,42 @@ def fetch_page(limit=100,offset=0) -> dict:
     if not obj.get("success"): raise RuntimeError("六合彩資料來源回傳失敗")
     return obj
 
+def fetch_on99_year(year: int) -> list[dict]:
+    """備援資料源：解析頁面內嵌的結構化開獎資料。"""
+    url=f"https://on99.life/lottery/history/{year}"
+    req=urllib.request.Request(url,headers={"User-Agent":"Mozilla/5.0 MarkSix-IronLaw/3.1"})
+    with urllib.request.urlopen(req,timeout=30) as r: text=r.read().decode("utf-8")
+    pattern=r'\{\\?"drawDate\\?":\\?"(\d{4}-\d{2}-\d{2})\\?",\\?"winningNumbers\\?":\[([0-9,]+)\],\\?"extraNumber\\?":([0-9]+),\\?"drawId\\?":\\?"([^"\\]+)'
+    out=[]
+    for draw_date,numbers,extra,draw_id in re.findall(pattern,text):
+        out.append({"draw_date":draw_date,"numbers":[int(x) for x in numbers.split(",")],"extra_number":int(extra),"draw_id":draw_id})
+    if not out: raise RuntimeError("六合彩備援資料解析失敗")
+    return out
+
 def update_latest() -> int:
-    rows=list(csv.DictReader(CSV_PATH.open(encoding="utf-8-sig",newline="")))
-    fields=list(rows[0]); by_period={r["period"]:r for r in rows}
-    for item in fetch_page(100)["draws"]:
+    raw_rows=list(csv.DictReader(CSV_PATH.open(encoding="utf-8-sig",newline="")))
+    fields=list(raw_rows[0])
+    # 同一開彩日可能在不同來源帶有節慶後綴；保留資訊較完整的正式期別。
+    clean_by_date={}
+    for row in raw_rows:
+        old=clean_by_date.get(row["draw_date"])
+        if old is None or len(row["period"])>len(old["period"]): clean_by_date[row["draw_date"]]=row
+    rows=list(clean_by_date.values())
+    by_period={r["period"]:r for r in rows}; by_date={r["draw_date"]:r for r in rows}
+    primary=fetch_page(100)["draws"]
+    fallback=fetch_on99_year(date.today().year)
+    incoming=primary+fallback
+    for item in incoming:
         nums=sorted(map(int,item["numbers"])); special=int(item["extra_number"])
         if len(nums)!=6 or len(set(nums))!=6 or special in nums or not all(1<=n<=49 for n in nums+[special]):
             raise ValueError(f"開獎資料驗證失敗：{item.get('draw_id')}")
-        period=str(item["draw_id"]); old=by_period.get(period,{k:"" for k in fields})
-        old.update({"period":period,"draw_date":item["draw_date"],**{f"n{i+1}":str(n) for i,n in enumerate(nums)},"special":str(special),"sales_amount":str(item.get("total_turnover") or ""),"source":"mark6six_archive_crosscheck_hkjc","fetched_at":date.today().isoformat()})
+        draw_date=item["draw_date"]
+        same_day=by_date.get(draw_date)
+        period=same_day["period"] if same_day else str(item["draw_id"])
+        old=by_period.get(period,{k:"" for k in fields})
+        old.update({"period":period,"draw_date":item["draw_date"],**{f"n{i+1}":str(n) for i,n in enumerate(nums)},"special":str(special),"sales_amount":str(item.get("total_turnover") or old.get("sales_amount") or ""),"source":"multi_source_marksix_crosscheck","fetched_at":date.today().isoformat()})
         by_period[period]=old
+        by_date[draw_date]=old
     ordered=sorted(by_period.values(),key=lambda r:r["draw_date"])
     tmp=CSV_PATH.with_suffix(".tmp")
     with tmp.open("w",encoding="utf-8-sig",newline="") as f:
