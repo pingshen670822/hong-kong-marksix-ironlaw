@@ -1,5 +1,7 @@
 name: 香港六合彩新核心自動更新
 on:
+  push:
+    branches: [main]
   schedule:
     # 每3小時檢查，涵蓋常態及節日／金多寶臨時開彩日。
     - cron: "0 */3 * * *"
