@@ -11,8 +11,6 @@ on:
   workflow_dispatch:
 permissions:
   contents: write
-  pages: write
-  id-token: write
 concurrency:
   group: hk-marksix-new-engine
   cancel-in-progress: false
@@ -35,13 +33,3 @@ jobs:
           git config user.email "actions@github.com"
           git add data reports site docs
           git diff --cached --quiet || (git commit -m "六合彩新核心開獎後自動更新" && git push)
-      - name: 啟用獨立手機雲端
-        uses: actions/configure-pages@v5
-        with:
-          enablement: true
-      - name: 打包最新戰報
-        uses: actions/upload-pages-artifact@v3
-        with:
-          path: docs
-      - name: 發布最新戰報
-        uses: actions/deploy-pages@v4
