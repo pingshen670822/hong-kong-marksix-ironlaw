@@ -2,34 +2,34 @@
   "system": "香港六合彩新世代鐵律預測系統",
   "generated_at": "2026-07-21",
   "passed": true,
-  "latest_period": "26/077",
-  "latest_date": "2026-07-16",
-  "target_date": "2026-07-21",
+  "latest_period": "26/078",
+  "latest_date": "2026-07-21",
+  "target_date": "2026-07-23",
   "checks": [
     {
       "name": "official_history_complete",
       "passed": true,
-      "detail": "4365 draws"
+      "detail": "4366 draws"
     },
     {
       "name": "history_latest_recent",
       "passed": true,
-      "detail": "26/077 2026-07-16; age=5 days"
+      "detail": "26/078 2026-07-21; age=0 days"
     },
     {
       "name": "announced_target_after_latest",
       "passed": true,
-      "detail": "2026-07-21 > 2026-07-16"
+      "detail": "2026-07-23 > 2026-07-21"
     },
     {
       "name": "target_not_stale",
       "passed": true,
-      "detail": "target=2026-07-21; today=2026-07-21"
+      "detail": "target=2026-07-23; today=2026-07-21"
     },
     {
       "name": "release_gate",
       "passed": true,
-      "detail": "{\"passed\": true, \"rule\": \"520期走步驗證須同時通過前段命中與機率校準，且不得由單一模型壟斷\", \"main_edge\": 7.96e-05, \"special_edge\": -2.892e-05, \"main_avg_hits\": 1.4923, \"main_random_hits\": 1.4694, \"special_avg_hits\": 0.0769, \"special_random_hits\": 0.0612, \"max_main_weight\": 0.11686306}"
+      "detail": "{\"passed\": true, \"rule\": \"520期走步驗證須同時通過前段命中與機率校準，且不得由單一模型壟斷\", \"main_edge\": 6.811e-05, \"special_edge\": -2.866e-05, \"main_avg_hits\": 1.4846, \"main_random_hits\": 1.4694, \"special_avg_hits\": 0.0769, \"special_random_hits\": 0.0612, \"max_main_weight\": 0.12003237}"
     },
     {
       "name": "walk_forward_520",
@@ -39,7 +39,7 @@
     {
       "name": "main_hit_edge",
       "passed": true,
-      "detail": "1.4923 > 1.4694"
+      "detail": "1.4846 > 1.4694"
     },
     {
       "name": "special_hit_edge",
@@ -49,7 +49,7 @@
     {
       "name": "no_model_monopoly",
       "passed": true,
-      "detail": "0.11686306"
+      "detail": "0.12003237"
     },
     {
       "name": "candidate_49",
