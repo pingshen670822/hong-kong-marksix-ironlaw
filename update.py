@@ -5,6 +5,7 @@ from engine import ROOT,load_draws,analyze
 from report import build_reports
 
 API="https://www.mark6six.com/api/draws.php"
+NEXT_DRAW_URL="https://mark6.app/live"
 CSV_PATH=ROOT/"data"/"official_marksix.csv"
 HISTORY_PATH=ROOT/"data"/"prediction_history.json"
 
@@ -26,6 +27,14 @@ def fetch_on99_year(year: int) -> list[dict]:
         out.append({"draw_date":draw_date,"numbers":[int(x) for x in numbers.split(",")],"extra_number":int(extra),"draw_id":draw_id})
     if not out: raise RuntimeError("六合彩備援資料解析失敗")
     return out
+
+def fetch_announced_next_draw() -> str:
+    """讀取已公告的下期截止售票日，避免節慶或金多寶改期時誤判。"""
+    req=urllib.request.Request(NEXT_DRAW_URL,headers={"User-Agent":"Mozilla/5.0 MarkSix-IronLaw/4.0"})
+    with urllib.request.urlopen(req,timeout=30) as r: text=r.read().decode("utf-8","replace")
+    m=re.search(r"下期截止售票[：:]\s*(\d{4})年(\d{1,2})月(\d{1,2})日",text)
+    if not m: raise RuntimeError("無法取得已公告的下一期日期；鐵律禁止用錯誤日期發布")
+    return f"{int(m.group(1)):04d}-{int(m.group(2)):02d}-{int(m.group(3)):02d}"
 
 def update_latest() -> int:
     raw_rows=list(csv.DictReader(CSV_PATH.open(encoding="utf-8-sig",newline="")))
@@ -73,6 +82,10 @@ def settle_and_save(result: dict):
 
 def main():
     count=update_latest(); result=analyze(load_draws())
+    announced_target=fetch_announced_next_draw()
+    if date.fromisoformat(announced_target) <= date.fromisoformat(result["latest_draw"]["date"]):
+        raise RuntimeError("下一期公告日期沒有晚於最新開獎日期；鐵律禁止發布")
+    result["target_date"]=announced_target
     history=settle_and_save(result); build_reports(result,history)
     print(json.dumps({"draws":count,"latest":result["latest_draw"],"target":result["target_date"],"gate":result["release_gate"]},ensure_ascii=False,indent=2))
 if __name__=="__main__": main()

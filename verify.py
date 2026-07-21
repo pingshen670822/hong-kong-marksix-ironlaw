@@ -12,6 +12,9 @@ def main():
     add("official_history_complete",len(draws)>=2152,f"{len(draws)} draws")
     latest_age=(date.today()-date.fromisoformat(draws[-1].draw_date)).days
     add("history_latest_recent",0<=latest_age<=10,f"{draws[-1].period} {draws[-1].draw_date}; age={latest_age} days")
+    target=date.fromisoformat(analysis["target_date"])
+    add("announced_target_after_latest",target>date.fromisoformat(draws[-1].draw_date),f"{analysis['target_date']} > {draws[-1].draw_date}")
+    add("target_not_stale",target>=date.today(),f"target={analysis['target_date']}; today={date.today().isoformat()}")
     add("release_gate",analysis["release_gate"]["passed"],json.dumps(analysis["release_gate"],ensure_ascii=False))
     add("walk_forward_520",analysis["backtest"]["main"]["rounds"]==520,str(analysis["backtest"]["main"]["rounds"]))
     add("main_hit_edge",analysis["release_gate"]["main_avg_hits"]>analysis["release_gate"]["main_random_hits"],f"{analysis['release_gate']['main_avg_hits']} > {analysis['release_gate']['main_random_hits']}")
