@@ -57,6 +57,16 @@
       "detail": "main/special 49"
     },
     {
+      "name": "all_modules_rolling_reviewed",
+      "passed": true,
+      "detail": "11 modules reviewed"
+    },
+    {
+      "name": "strongest_single_unique",
+      "passed": true,
+      "detail": "{\"number\": 37, \"calibrated_probability\": 0.129607, \"selection_rule\": \"所有合格模型依近120期滾動成績加權後，取校準機率最高且唯一的第1名\", \"based_on_period\": \"26/078\", \"based_on_date\": \"2026-07-21\"}"
+    },
+    {
       "name": "suggested_sets",
       "passed": true,
       "detail": "8 valid sets"

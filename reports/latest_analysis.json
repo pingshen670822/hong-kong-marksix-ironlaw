@@ -766,6 +766,19 @@
         "conditional_pair": 1.5423,
         "regime_slope": 1.4962
       },
+      "model_recent_120_hits": {
+        "bayes_24": 1.5417,
+        "bayes_60": 1.475,
+        "bayes_150": 1.375,
+        "bayes_360": 1.35,
+        "ewma_8": 1.5167,
+        "ewma_21": 1.5333,
+        "ewma_55": 1.5083,
+        "ewma_144": 1.375,
+        "empirical_hazard": 1.4083,
+        "conditional_pair": 1.575,
+        "regime_slope": 1.5
+      },
       "ensemble_logloss": 0.37170807,
       "uniform_logloss": 0.37177618,
       "logloss_edge": 6.811e-05,
@@ -978,7 +991,7 @@
           "period": "23/008",
           "date": "2023-01-19",
           "hit": 1,
-          "brier": 0.10750640942443575,
+          "brier": 0.10750640942443573,
           "logloss": 0.3719898155756048
         },
         {
@@ -1777,7 +1790,7 @@
           "date": "2023-10-31",
           "hit": 0,
           "brier": 0.10775760864339066,
-          "logloss": 0.37316487226345607
+          "logloss": 0.3731648722634562
         },
         {
           "period": "23/123",
@@ -1889,7 +1902,7 @@
           "date": "2023-12-07",
           "hit": 1,
           "brier": 0.1075951095235326,
-          "logloss": 0.37241507177667843
+          "logloss": 0.3724150717766785
         },
         {
           "period": "23/139",
@@ -2525,7 +2538,7 @@
           "period": "24/083",
           "date": "2024-07-25",
           "hit": 1,
-          "brier": 0.10791946664764966,
+          "brier": 0.10791946664764969,
           "logloss": 0.37399001909359125
         },
         {
@@ -3534,7 +3547,7 @@
           "date": "2025-08-12",
           "hit": 3,
           "brier": 0.10735865410605298,
-          "logloss": 0.3713610149797743
+          "logloss": 0.37136101497977425
         },
         {
           "period": "25/088",
@@ -3807,7 +3820,7 @@
           "date": "2025-12-02",
           "hit": 2,
           "brier": 0.10757993461038724,
-          "logloss": 0.37235327051843864
+          "logloss": 0.37235327051843853
         },
         {
           "period": "25/127",
@@ -3947,7 +3960,7 @@
           "date": "2026-01-29",
           "hit": 2,
           "brier": 0.10698164989105474,
-          "logloss": 0.36959716904289763
+          "logloss": 0.3695971690428976
         },
         {
           "period": "26/013",
@@ -4108,7 +4121,7 @@
           "date": "2026-03-31",
           "hit": 2,
           "brier": 0.10692475322621948,
-          "logloss": 0.36934987682848736
+          "logloss": 0.3693498768284874
         },
         {
           "period": "26/036 EAS",
@@ -4411,7 +4424,285 @@
           "brier": 0.10756511128070384,
           "logloss": 0.3722580768727208
         }
-      ]
+      ],
+      "module_review": [
+        {
+          "model": "bayes_24",
+          "prior_top12": [
+            7,
+            5,
+            34,
+            40,
+            20,
+            26,
+            31,
+            10,
+            12,
+            32,
+            37,
+            47
+          ],
+          "latest_hits": [
+            37,
+            47
+          ],
+          "latest_hit_count": 2,
+          "recent_120_avg_hits": 1.5417,
+          "new_weight": 0.11260714,
+          "decision": "保留並依滾動成績配權"
+        },
+        {
+          "model": "bayes_60",
+          "prior_top12": [
+            28,
+            2,
+            37,
+            34,
+            20,
+            18,
+            47,
+            46,
+            16,
+            7,
+            26,
+            14
+          ],
+          "latest_hits": [
+            37,
+            47
+          ],
+          "latest_hit_count": 2,
+          "recent_120_avg_hits": 1.475,
+          "new_weight": 0.09742868,
+          "decision": "保留並依滾動成績配權"
+        },
+        {
+          "model": "bayes_150",
+          "prior_top12": [
+            28,
+            37,
+            44,
+            32,
+            34,
+            18,
+            17,
+            6,
+            45,
+            19,
+            2,
+            39
+          ],
+          "latest_hits": [
+            6,
+            37,
+            45
+          ],
+          "latest_hit_count": 3,
+          "recent_120_avg_hits": 1.375,
+          "new_weight": 0.07528356,
+          "decision": "低於隨機基準，自動降權"
+        },
+        {
+          "model": "bayes_360",
+          "prior_top12": [
+            18,
+            21,
+            6,
+            27,
+            19,
+            28,
+            34,
+            24,
+            32,
+            17,
+            44,
+            25
+          ],
+          "latest_hits": [
+            6
+          ],
+          "latest_hit_count": 1,
+          "recent_120_avg_hits": 1.35,
+          "new_weight": 0.07390594,
+          "decision": "低於隨機基準，自動降權"
+        },
+        {
+          "model": "ewma_8",
+          "prior_top12": [
+            5,
+            7,
+            26,
+            34,
+            31,
+            18,
+            19,
+            10,
+            16,
+            20,
+            21,
+            44
+          ],
+          "latest_hits": [],
+          "latest_hit_count": 0,
+          "recent_120_avg_hits": 1.5167,
+          "new_weight": 0.06842617,
+          "decision": "保留並依滾動成績配權"
+        },
+        {
+          "model": "ewma_21",
+          "prior_top12": [
+            7,
+            34,
+            5,
+            26,
+            20,
+            28,
+            18,
+            12,
+            37,
+            2,
+            16,
+            19
+          ],
+          "latest_hits": [
+            37
+          ],
+          "latest_hit_count": 1,
+          "recent_120_avg_hits": 1.5333,
+          "new_weight": 0.09611296,
+          "decision": "保留並依滾動成績配權"
+        },
+        {
+          "model": "ewma_55",
+          "prior_top12": [
+            28,
+            34,
+            37,
+            18,
+            26,
+            7,
+            2,
+            12,
+            20,
+            6,
+            32,
+            44
+          ],
+          "latest_hits": [
+            6,
+            37
+          ],
+          "latest_hit_count": 2,
+          "recent_120_avg_hits": 1.5083,
+          "new_weight": 0.09825679,
+          "decision": "保留並依滾動成績配權"
+        },
+        {
+          "model": "ewma_144",
+          "prior_top12": [
+            28,
+            18,
+            32,
+            34,
+            6,
+            37,
+            44,
+            19,
+            12,
+            2,
+            17,
+            7
+          ],
+          "latest_hits": [
+            6,
+            37
+          ],
+          "latest_hit_count": 2,
+          "recent_120_avg_hits": 1.375,
+          "new_weight": 0.07572096,
+          "decision": "低於隨機基準，自動降權"
+        },
+        {
+          "model": "empirical_hazard",
+          "prior_top12": [
+            32,
+            18,
+            49,
+            21,
+            12,
+            23,
+            20,
+            47,
+            41,
+            44,
+            6,
+            35
+          ],
+          "latest_hits": [
+            6,
+            41,
+            47
+          ],
+          "latest_hit_count": 3,
+          "recent_120_avg_hits": 1.4083,
+          "new_weight": 0.07713808,
+          "decision": "低於隨機基準，自動降權"
+        },
+        {
+          "model": "conditional_pair",
+          "prior_top12": [
+            18,
+            32,
+            21,
+            30,
+            44,
+            27,
+            16,
+            26,
+            19,
+            31,
+            10,
+            20
+          ],
+          "latest_hits": [],
+          "latest_hit_count": 0,
+          "recent_120_avg_hits": 1.575,
+          "new_weight": 0.12003237,
+          "decision": "保留並依滾動成績配權"
+        },
+        {
+          "model": "regime_slope",
+          "prior_top12": [
+            34,
+            7,
+            20,
+            47,
+            26,
+            5,
+            40,
+            16,
+            14,
+            12,
+            19,
+            41
+          ],
+          "latest_hits": [
+            41,
+            47
+          ],
+          "latest_hit_count": 2,
+          "recent_120_avg_hits": 1.5,
+          "new_weight": 0.10508735,
+          "decision": "保留並依滾動成績配權"
+        }
+      ],
+      "strongest_single_audit": {
+        "number": 37,
+        "calibrated_probability": 0.129607,
+        "selection_rule": "所有合格模型依近120期滾動成績加權後，取校準機率最高且唯一的第1名",
+        "based_on_period": "26/078",
+        "based_on_date": "2026-07-21"
+      }
     },
     "special": {
       "rounds": 520,
@@ -4458,6 +4749,17 @@
         "ewma_55": 0.0635,
         "ewma_144": 0.0712,
         "empirical_hazard": 0.0577
+      },
+      "model_recent_120_hits": {
+        "bayes_24": 0.1167,
+        "bayes_60": 0.0417,
+        "bayes_150": 0.05,
+        "bayes_360": 0.1167,
+        "ewma_8": 0.0667,
+        "ewma_21": 0.0667,
+        "ewma_55": 0.0417,
+        "ewma_144": 0.0833,
+        "empirical_hazard": 0.075
       },
       "ensemble_logloss": 0.09965205,
       "uniform_logloss": 0.09962339,

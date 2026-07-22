@@ -9,7 +9,8 @@ class EngineTest(unittest.TestCase):
     def test_history_integrity(self):
         self.assertGreaterEqual(len(self.draws),4300)
         self.assertEqual(len({d.period for d in self.draws}),len(self.draws))
-        self.assertEqual(self.draws[-1].draw_date,"2026-07-14")
+        self.assertEqual(self.draws,sorted(self.draws,key=lambda d:d.draw_date))
+        self.assertGreater(self.draws[-1].draw_date,self.draws[-2].draw_date)
     def test_models(self):
         m=engine.model_suite(self.draws[:500])
         self.assertTrue(all(len(x)==49 for x in m.values()))
