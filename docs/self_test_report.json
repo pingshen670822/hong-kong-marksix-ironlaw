@@ -1,6 +1,6 @@
 {
   "system": "香港六合彩新世代鐵律預測系統",
-  "generated_at": "2026-07-21",
+  "generated_at": "2026-07-22",
   "passed": true,
   "latest_period": "26/078",
   "latest_date": "2026-07-21",
@@ -14,7 +14,7 @@
     {
       "name": "history_latest_recent",
       "passed": true,
-      "detail": "26/078 2026-07-21; age=0 days"
+      "detail": "26/078 2026-07-21; age=1 days"
     },
     {
       "name": "announced_target_after_latest",
@@ -24,7 +24,7 @@
     {
       "name": "target_not_stale",
       "passed": true,
-      "detail": "target=2026-07-23; today=2026-07-21"
+      "detail": "target=2026-07-23; today=2026-07-22"
     },
     {
       "name": "release_gate",
