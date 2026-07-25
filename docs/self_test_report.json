@@ -2,34 +2,34 @@
   "system": "香港六合彩新世代鐵律預測系統",
   "generated_at": "2026-07-25",
   "passed": true,
-  "latest_period": "26/079",
-  "latest_date": "2026-07-23",
-  "target_date": "2026-07-25",
+  "latest_period": "26/080",
+  "latest_date": "2026-07-25",
+  "target_date": "2026-07-28",
   "checks": [
     {
       "name": "official_history_complete",
       "passed": true,
-      "detail": "4367 draws"
+      "detail": "4368 draws"
     },
     {
       "name": "history_latest_recent",
       "passed": true,
-      "detail": "26/079 2026-07-23; age=2 days"
+      "detail": "26/080 2026-07-25; age=0 days"
     },
     {
       "name": "announced_target_after_latest",
       "passed": true,
-      "detail": "2026-07-25 > 2026-07-23"
+      "detail": "2026-07-28 > 2026-07-25"
     },
     {
       "name": "target_not_stale",
       "passed": true,
-      "detail": "target=2026-07-25; today=2026-07-25"
+      "detail": "target=2026-07-28; today=2026-07-25"
     },
     {
       "name": "release_gate",
       "passed": true,
-      "detail": "{\"passed\": true, \"rule\": \"520期走步驗證須同時通過前段命中與機率校準，且不得由單一模型壟斷\", \"main_edge\": 7.056e-05, \"special_edge\": -2.479e-05, \"main_avg_hits\": 1.4846, \"main_random_hits\": 1.4694, \"special_avg_hits\": 0.0769, \"special_random_hits\": 0.0612, \"max_main_weight\": 0.11733772}"
+      "detail": "{\"passed\": true, \"rule\": \"520期走步驗證須同時通過前段命中與機率校準，且不得由單一模型壟斷\", \"main_edge\": 7.68e-05, \"special_edge\": -3.472e-05, \"main_avg_hits\": 1.4865, \"main_random_hits\": 1.4694, \"special_avg_hits\": 0.075, \"special_random_hits\": 0.0612, \"max_main_weight\": 0.11813924}"
     },
     {
       "name": "walk_forward_520",
@@ -39,17 +39,17 @@
     {
       "name": "main_hit_edge",
       "passed": true,
-      "detail": "1.4846 > 1.4694"
+      "detail": "1.4865 > 1.4694"
     },
     {
       "name": "special_hit_edge",
       "passed": true,
-      "detail": "0.0769 > 0.0612"
+      "detail": "0.075 > 0.0612"
     },
     {
       "name": "no_model_monopoly",
       "passed": true,
-      "detail": "0.11733772"
+      "detail": "0.11813924"
     },
     {
       "name": "candidate_49",
@@ -64,7 +64,7 @@
     {
       "name": "strongest_single_unique",
       "passed": true,
-      "detail": "{\"number\": 7, \"calibrated_probability\": 0.130894, \"selection_rule\": \"所有合格模型依近120期滾動成績加權後，取校準機率最高且唯一的第1名\", \"based_on_period\": \"26/079\", \"based_on_date\": \"2026-07-23\"}"
+      "detail": "{\"number\": 7, \"calibrated_probability\": 0.13312, \"selection_rule\": \"所有合格模型依近120期滾動成績加權後，取校準機率最高且唯一的第1名\", \"based_on_period\": \"26/080\", \"based_on_date\": \"2026-07-25\"}"
     },
     {
       "name": "suggested_sets",
