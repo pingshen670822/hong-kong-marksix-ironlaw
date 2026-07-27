@@ -18,8 +18,12 @@ def main():
     add("release_gate",analysis["release_gate"]["passed"],json.dumps(analysis["release_gate"],ensure_ascii=False))
     add("walk_forward_520",analysis["backtest"]["main"]["rounds"]==520,str(analysis["backtest"]["main"]["rounds"]))
     add("main_hit_edge",analysis["release_gate"]["main_avg_hits"]>analysis["release_gate"]["main_random_hits"],f"{analysis['release_gate']['main_avg_hits']} > {analysis['release_gate']['main_random_hits']}")
+    recent=analysis["backtest"]["main"]["ensemble_recent_hits"]
+    add("recent_60_hit_edge",recent["60"]>=analysis["release_gate"]["main_random_hits"],f"{recent['60']} >= {analysis['release_gate']['main_random_hits']}")
+    add("recent_120_hit_edge",recent["120"]>=analysis["release_gate"]["main_random_hits"],f"{recent['120']} >= {analysis['release_gate']['main_random_hits']}")
+    add("new_weighting_v4",analysis["backtest"]["main"].get("weighting_strategy","").startswith("三層滾動權重v4"),analysis["backtest"]["main"].get("weighting_strategy","missing"))
     add("special_hit_edge",analysis["release_gate"]["special_avg_hits"]>analysis["release_gate"]["special_random_hits"],f"{analysis['release_gate']['special_avg_hits']} > {analysis['release_gate']['special_random_hits']}")
-    add("no_model_monopoly",analysis["release_gate"]["max_main_weight"]<=.30,str(analysis["release_gate"]["max_main_weight"]))
+    add("no_model_monopoly",analysis["release_gate"]["max_main_weight"]<=.22,str(analysis["release_gate"]["max_main_weight"]))
     add("candidate_49",len(analysis["main_rank"])==49 and len(analysis["special_rank"])==49,"main/special 49")
     audit=analysis["backtest"]["main"].get("module_review",[])
     strongest=analysis["backtest"]["main"].get("strongest_single_audit",{})
