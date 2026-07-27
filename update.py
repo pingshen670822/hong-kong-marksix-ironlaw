@@ -46,9 +46,16 @@ def update_latest() -> int:
         if old is None or len(row["period"])>len(old["period"]): clean_by_date[row["draw_date"]]=row
     rows=list(clean_by_date.values())
     by_period={r["period"]:r for r in rows}; by_date={r["draw_date"]:r for r in rows}
-    primary=fetch_page(100)["draws"]
-    fallback=fetch_on99_year(date.today().year)
+    source_errors=[]
+    try: primary=fetch_page(100)["draws"]
+    except Exception as exc:
+        primary=[]; source_errors.append(f"primary:{type(exc).__name__}")
+    try: fallback=fetch_on99_year(date.today().year)
+    except Exception as exc:
+        fallback=[]; source_errors.append(f"fallback:{type(exc).__name__}")
     incoming=primary+fallback
+    if not incoming:
+        raise RuntimeError("所有六合彩開獎資料源同時失敗；鐵律禁止使用舊資料假裝更新："+",".join(source_errors))
     for item in incoming:
         nums=sorted(map(int,item["numbers"])); special=int(item["extra_number"])
         if len(nums)!=6 or len(set(nums))!=6 or special in nums or not all(1<=n<=49 for n in nums+[special]):
