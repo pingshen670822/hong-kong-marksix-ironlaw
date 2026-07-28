@@ -29,7 +29,7 @@
     {
       "name": "release_gate",
       "passed": true,
-      "detail": "{\"passed\": true, \"rule\": \"520期走步驗證須同時通過前段命中與機率校準，且不得由單一模型壟斷\", \"main_edge\": 6.803e-05, \"special_edge\": -9.06e-06, \"main_avg_hits\": 1.4923, \"main_random_hits\": 1.4694, \"special_avg_hits\": 0.0788, \"special_random_hits\": 0.0612, \"max_main_weight\": 0.17903149}"
+      "detail": "{\"passed\": true, \"rule\": \"520期走步驗證須同時通過前段命中與機率校準，且不得由單一模型壟斷\", \"main_edge\": 6.33e-05, \"special_edge\": -9.06e-06, \"main_avg_hits\": 1.15, \"main_random_hits\": 1.102, \"special_avg_hits\": 0.0788, \"special_random_hits\": 0.0612, \"max_main_weight\": 0.16703647}"
     },
     {
       "name": "walk_forward_520",
@@ -39,22 +39,27 @@
     {
       "name": "main_hit_edge",
       "passed": true,
-      "detail": "1.4923 > 1.4694"
+      "detail": "1.15 > 1.102"
     },
     {
-      "name": "recent_60_hit_edge",
+      "name": "recent_60_within9_edge",
       "passed": true,
-      "detail": "1.5333 >= 1.4694"
+      "detail": "0.7667 >= 0.7255"
     },
     {
       "name": "recent_120_hit_edge",
       "passed": true,
-      "detail": "1.6083 >= 1.4694"
+      "detail": "1.1583 >= 1.102"
     },
     {
-      "name": "new_weighting_v4",
+      "name": "new_weighting_v5",
       "passed": true,
-      "detail": "三層滾動權重v4：30期50%＋120期30%＋360期20%，另加校準誤差與連續失誤懲罰，單模型上限22%"
+      "detail": "前9碼三層滾動權重v5：30期60%＋120期25%＋360期15%，另加校準誤差與連續失誤懲罰，單模型上限22%"
+    },
+    {
+      "name": "top9_rank_audit",
+      "passed": true,
+      "detail": "{\"10\": {\"within_9_rate\": 0.9, \"average_first_hit_rank\": 6.1, \"outside_9_count\": 1}, \"30\": {\"within_9_rate\": 0.7333, \"average_first_hit_rank\": 8.1, \"outside_9_count\": 8}, \"60\": {\"within_9_rate\": 0.7667, \"average_first_hit_rank\": 7.1667, \"outside_9_count\": 14}, \"120\": {\"within_9_rate\": 0.7583, \"average_first_hit_rank\": 7.1, \"outside_9_count\": 29}}"
     },
     {
       "name": "special_hit_edge",
@@ -64,7 +69,7 @@
     {
       "name": "no_model_monopoly",
       "passed": true,
-      "detail": "0.17903149"
+      "detail": "0.16703647"
     },
     {
       "name": "candidate_49",
@@ -79,7 +84,7 @@
     {
       "name": "strongest_single_unique",
       "passed": true,
-      "detail": "{\"number\": 7, \"calibrated_probability\": 0.130527, \"selection_rule\": \"所有模型依30／120／360期三層成績、校準誤差與連續失誤重新配權後，取校準機率唯一第1名\", \"based_on_period\": \"26/080\", \"based_on_date\": \"2026-07-25\"}"
+      "detail": "{\"number\": 7, \"calibrated_probability\": 0.129325, \"selection_rule\": \"所有模型依30／120／360期三層成績、校準誤差與連續失誤重新配權後，取校準機率唯一第1名\", \"based_on_period\": \"26/080\", \"based_on_date\": \"2026-07-25\"}"
     },
     {
       "name": "suggested_sets",

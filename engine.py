@@ -107,14 +107,15 @@ def trailing_zero_streak(values: list[int], cap: int=6) -> int:
         if streak>=cap: break
     return streak
 
-def walk_forward(draws: list[Draw], rounds: int=520, special: bool=False) -> dict:
+def walk_forward(draws: list[Draw], rounds: int=520, special: bool=False, weight_config: tuple[float,float,float,float,float]=(.50,.30,.20,3.4,.055)) -> dict:
     start=max(360,len(draws)-rounds); names=list(model_suite(draws[:start],special))
     losses={n:[] for n in names}; hits={n:[] for n in names}; ensemble_rows=[]
+    short_w,mid_w,long_w,temperature,streak_cost=weight_config
     weights=np.ones(len(names))/len(names)
     for i in range(start,len(draws)):
         models=model_suite(draws[:i],special); actual=np.zeros(N)
         actual[(draws[i].special-1 if special else np.array(draws[i].main)-1)]=1
-        preds=np.stack([models[n] for n in names]); k=3 if special else 12
+        preds=np.stack([models[n] for n in names]); k=3 if special else 9
         if losses[names[0]]:
             expected=k*(1 if special else 6)/49
             uniform_ll=logloss(np.full(N,(1 if special else 6)/N),actual)
@@ -128,18 +129,20 @@ def walk_forward(draws: list[Draw], rounds: int=520, special: bool=False) -> dic
                 loss360=statistics.mean(losses[n][-360:])
                 streak=trailing_zero_streak(hits[n])
                 # 新權重鐵律：短期失速優先反映，中長期負責防止三兩期過度擬合。
-                hit_edge=.50*(hit30-expected)+.30*(hit120-expected)+.20*(hit360-expected)
+                hit_edge=short_w*(hit30-expected)+mid_w*(hit120-expected)+long_w*(hit360-expected)
                 calibration_penalty=12*max(0,loss30-uniform_ll)+8*max(0,loss120-uniform_ll)+4*max(0,loss360-uniform_ll)
-                failure_penalty=.055*streak
+                failure_penalty=streak_cost*streak
                 quality.append(hit_edge-calibration_penalty-failure_penalty)
-            q=np.array(quality); weights=np.exp(3.4*(q-q.max())); weights/=weights.sum()
+            q=np.array(quality); weights=np.exp(temperature*(q-q.max())); weights/=weights.sum()
             for _ in range(5):
                 weights=np.minimum(weights,.22); weights/=weights.sum()
         raw_ensemble=np.average(preds,axis=0,weights=weights)
         # Lottery signals are weak: shrink aggressively toward the fair-draw prior while preserving rank.
         prior=np.full(N,(1 if special else 6)/N)
         ensemble=.20*raw_ensemble+.80*prior
-        ensemble_rows.append({"period":draws[i].period,"date":draws[i].draw_date,"hit":int(actual[np.argsort(ensemble)[-k:]].sum()),"brier":brier(ensemble,actual),"logloss":logloss(ensemble,actual)})
+        ensemble_order=np.argsort(ensemble)[::-1]
+        actual_ranks=sorted(j+1 for j,idx in enumerate(ensemble_order) if actual[idx])
+        ensemble_rows.append({"period":draws[i].period,"date":draws[i].draw_date,"hit":int(actual[ensemble_order[:k]].sum()),"actual_ranks":actual_ranks,"first_hit_rank":actual_ranks[0],"within_9":actual_ranks[0]<=9,"brier":brier(ensemble,actual),"logloss":logloss(ensemble,actual)})
         step=[]
         for j,n in enumerate(names):
             hit=int(actual[np.argsort(preds[j])[-k:]].sum())
@@ -200,27 +203,33 @@ def prize_division(selected: list[int] | tuple[int,...], draw: Draw) -> str | No
     return {(6,False):"一獎",(5,True):"二獎",(5,False):"三獎",(4,True):"四獎",(4,False):"五獎",(3,True):"六獎",(3,False):"七獎"}.get((hits,extra))
 
 def analyze(draws: list[Draw]) -> dict:
-    main_bt=walk_forward(draws,520,False); special_bt=walk_forward(draws,520,True)
+    main_bt=walk_forward(draws,520,False,(.60,.25,.15,4.0,.07)); special_bt=walk_forward(draws,520,True)
     ms=final_scores(draws,main_bt); ss=final_scores(draws,special_bt,True)
     rank=(np.argsort(ms)[::-1]+1).tolist(); srank=(np.argsort(ss)[::-1]+1).tolist()
     # Publication gate measures calibration, not fabricated certainty.
-    main_random=12*6/49; special_random=3/49
-    recent_gate=main_bt["ensemble_recent_hits"]["60"]>=main_random and main_bt["ensemble_recent_hits"]["120"]>=main_random
+    main_random=9*6/49; special_random=3/49
+    within9_random=1-math.comb(40,6)/math.comb(49,6)
+    recent_within9=statistics.mean(r["within_9"] for r in main_bt["rows"][-60:])
+    recent_gate=recent_within9>=within9_random and main_bt["ensemble_recent_hits"]["120"]>=main_random
     gate=main_bt["avg_hits"]>main_random and recent_gate and special_bt["avg_hits"]>=special_random and main_bt["logloss_edge"]>=-0.0005 and special_bt["logloss_edge"]>=-0.0005
     prior_models=model_suite(draws[:-1],False)
     actual_latest=set(draws[-1].main)
     module_review=[]
     for name in main_bt["names"]:
-        prior_top12=(np.argsort(prior_models[name])[::-1]+1)[:12].tolist()
-        latest_hits=sorted(actual_latest & set(prior_top12))
+        prior_top9=(np.argsort(prior_models[name])[::-1]+1)[:9].tolist()
+        latest_hits=sorted(actual_latest & set(prior_top9))
         recent30=main_bt["model_recent_30_hits"][name]
         recent120=main_bt["model_recent_120_hits"][name]
         recent360=main_bt["model_recent_360_hits"][name]
         streak=main_bt["model_failure_streak"][name]
         weak=recent30<main_random or (recent120<main_random and recent360<main_random)
         decision="短期失速或中長期落後，自動降權" if weak else "通過三層滾動檢查，依成績配權"
-        module_review.append({"model":name,"prior_top12":prior_top12,"latest_hits":latest_hits,"latest_hit_count":len(latest_hits),"recent_30_avg_hits":recent30,"recent_120_avg_hits":recent120,"recent_360_avg_hits":recent360,"failure_streak":streak,"new_weight":main_bt["weights"][name],"decision":decision})
+        module_review.append({"model":name,"prior_top9":prior_top9,"latest_hits":latest_hits,"latest_hit_count":len(latest_hits),"recent_30_avg_hits":recent30,"recent_120_avg_hits":recent120,"recent_360_avg_hits":recent360,"failure_streak":streak,"new_weight":main_bt["weights"][name],"decision":decision})
     main_bt["module_review"]=module_review
+    main_bt["ranking_target"]="主號前9碼"
+    main_bt["weighting_strategy"]="前9碼三層滾動權重v5：30期60%＋120期25%＋360期15%，另加校準誤差與連續失誤懲罰，單模型上限22%"
+    main_bt["within9_random_baseline"]=round(within9_random,4)
+    main_bt["first_hit_rank_audit"]={str(w):{"within_9_rate":round(statistics.mean(r["within_9"] for r in main_bt["rows"][-w:]),4),"average_first_hit_rank":round(statistics.mean(r["first_hit_rank"] for r in main_bt["rows"][-w:]),4),"outside_9_count":sum(not r["within_9"] for r in main_bt["rows"][-w:])} for w in (10,30,60,120)}
     main_bt["strongest_single_audit"]={"number":rank[0],"calibrated_probability":round(float(ms[rank[0]-1]),6),"selection_rule":"所有模型依30／120／360期三層成績、校準誤差與連續失誤重新配權後，取校準機率唯一第1名","based_on_period":draws[-1].period,"based_on_date":draws[-1].draw_date}
     return {"system":"香港六合彩新世代鐵律預測系統","engine":"marksix_cleanroom_ensemble_v3","generated_at":date.today().isoformat(),"history":{"count":len(draws),"first":draws[0].draw_date,"latest":draws[-1].draw_date,"latest_period":draws[-1].period},"latest_draw":{"period":draws[-1].period,"date":draws[-1].draw_date,"main":draws[-1].main,"special":draws[-1].special},"target_date":next_draw(draws[-1].draw_date,draws),"main_rank":[{"rank":i+1,"number":n,"probability":round(float(ms[n-1]),6)} for i,n in enumerate(rank)],"special_rank":[{"rank":i+1,"number":n,"probability":round(float(ss[n-1]),6)} for i,n in enumerate(srank)],"packs":{"最強單支":rank[:1],"二中一":rank[:2],"三中一":rank[:3],"五中二":rank[:5],"九中三":rank[:9],"主攻12碼":rank[:12],"防守18碼":rank[:18]},"special_packs":{"最強單支":srank[:1],"三碼觀察":srank[:3]},"avoid":{"五不中":sorted(rank[-5:]),"十不中":sorted(rank[-10:]),"十五不中":sorted(rank[-15:])},"suggested_sets":build_sets(ms),"rules":{"range":"1–49","main_numbers":6,"extra_numbers":1,"unit_bet_hkd":10,"prizes":{"一獎":"6個正選號碼","二獎":"5個正選號碼＋特別號","三獎":"5個正選號碼","四獎":"4個正選號碼＋特別號（固定HK$9,600）","五獎":"4個正選號碼（固定HK$640）","六獎":"3個正選號碼＋特別號（固定HK$320）","七獎":"3個正選號碼（固定HK$40）"}},"backtest":{"main":main_bt,"special":special_bt},"release_gate":{"passed":gate,"rule":"520期走步驗證須同時通過前段命中與機率校準，且不得由單一模型壟斷","main_edge":main_bt["logloss_edge"],"special_edge":special_bt["logloss_edge"],"main_avg_hits":main_bt["avg_hits"],"main_random_hits":round(main_random,4),"special_avg_hits":special_bt["avg_hits"],"special_random_hits":round(special_random,4),"max_main_weight":max(main_bt["weights"].values())},"notice":"六合彩每期開獎為獨立隨機事件；本系統只做可回測的機率排序，不保證中獎。請量力而為，未滿18歲不得投注。"}
 

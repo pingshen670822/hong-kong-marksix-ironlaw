@@ -19,9 +19,13 @@ def main():
     add("walk_forward_520",analysis["backtest"]["main"]["rounds"]==520,str(analysis["backtest"]["main"]["rounds"]))
     add("main_hit_edge",analysis["release_gate"]["main_avg_hits"]>analysis["release_gate"]["main_random_hits"],f"{analysis['release_gate']['main_avg_hits']} > {analysis['release_gate']['main_random_hits']}")
     recent=analysis["backtest"]["main"]["ensemble_recent_hits"]
-    add("recent_60_hit_edge",recent["60"]>=analysis["release_gate"]["main_random_hits"],f"{recent['60']} >= {analysis['release_gate']['main_random_hits']}")
+    within9_60=analysis["backtest"]["main"]["first_hit_rank_audit"]["60"]["within_9_rate"]
+    within9_random=analysis["backtest"]["main"]["within9_random_baseline"]
+    add("recent_60_within9_edge",within9_60>=within9_random,f"{within9_60} >= {within9_random}")
     add("recent_120_hit_edge",recent["120"]>=analysis["release_gate"]["main_random_hits"],f"{recent['120']} >= {analysis['release_gate']['main_random_hits']}")
-    add("new_weighting_v4",analysis["backtest"]["main"].get("weighting_strategy","").startswith("三層滾動權重v4"),analysis["backtest"]["main"].get("weighting_strategy","missing"))
+    add("new_weighting_v5",analysis["backtest"]["main"].get("weighting_strategy","").startswith("前9碼三層滾動權重v5"),analysis["backtest"]["main"].get("weighting_strategy","missing"))
+    rank_audit=analysis["backtest"]["main"].get("first_hit_rank_audit",{})
+    add("top9_rank_audit",analysis["backtest"]["main"].get("ranking_target")=="主號前9碼" and all(x in rank_audit for x in ("10","30","60","120")),json.dumps(rank_audit,ensure_ascii=False))
     add("special_hit_edge",analysis["release_gate"]["special_avg_hits"]>analysis["release_gate"]["special_random_hits"],f"{analysis['release_gate']['special_avg_hits']} > {analysis['release_gate']['special_random_hits']}")
     add("no_model_monopoly",analysis["release_gate"]["max_main_weight"]<=.22,str(analysis["release_gate"]["max_main_weight"]))
     add("candidate_49",len(analysis["main_rank"])==49 and len(analysis["special_rank"])==49,"main/special 49")
