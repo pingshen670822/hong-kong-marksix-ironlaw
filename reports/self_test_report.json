@@ -2,24 +2,24 @@
   "system": "香港六合彩新世代鐵律預測系統",
   "generated_at": "2026-07-28",
   "passed": true,
-  "latest_period": "26/080",
-  "latest_date": "2026-07-25",
+  "latest_period": "26/081",
+  "latest_date": "2026-07-28",
   "target_date": "2026-07-30",
   "checks": [
     {
       "name": "official_history_complete",
       "passed": true,
-      "detail": "4368 draws"
+      "detail": "4369 draws"
     },
     {
       "name": "history_latest_recent",
       "passed": true,
-      "detail": "26/080 2026-07-25; age=3 days"
+      "detail": "26/081 2026-07-28; age=0 days"
     },
     {
       "name": "announced_target_after_latest",
       "passed": true,
-      "detail": "2026-07-30 > 2026-07-25"
+      "detail": "2026-07-30 > 2026-07-28"
     },
     {
       "name": "target_not_stale",
@@ -29,7 +29,7 @@
     {
       "name": "release_gate",
       "passed": true,
-      "detail": "{\"passed\": true, \"rule\": \"520期走步驗證須同時通過前段命中與機率校準，且不得由單一模型壟斷\", \"main_edge\": 6.33e-05, \"special_edge\": -9.06e-06, \"main_avg_hits\": 1.15, \"main_random_hits\": 1.102, \"special_avg_hits\": 0.0788, \"special_random_hits\": 0.0612, \"max_main_weight\": 0.16703647}"
+      "detail": "{\"passed\": true, \"rule\": \"520期走步驗證須同時通過前段命中與機率校準，且不得由單一模型壟斷\", \"main_edge\": 5.835e-05, \"special_edge\": -7.19e-06, \"main_avg_hits\": 1.1404, \"main_random_hits\": 1.102, \"special_avg_hits\": 0.0788, \"special_random_hits\": 0.0612, \"max_main_weight\": 0.20906575}"
     },
     {
       "name": "walk_forward_520",
@@ -39,7 +39,7 @@
     {
       "name": "main_hit_edge",
       "passed": true,
-      "detail": "1.15 > 1.102"
+      "detail": "1.1404 > 1.102"
     },
     {
       "name": "recent_60_within9_edge",
@@ -49,7 +49,7 @@
     {
       "name": "recent_120_hit_edge",
       "passed": true,
-      "detail": "1.1583 >= 1.102"
+      "detail": "1.15 >= 1.102"
     },
     {
       "name": "new_weighting_v5",
@@ -59,7 +59,7 @@
     {
       "name": "top9_rank_audit",
       "passed": true,
-      "detail": "{\"10\": {\"within_9_rate\": 0.9, \"average_first_hit_rank\": 6.1, \"outside_9_count\": 1}, \"30\": {\"within_9_rate\": 0.7333, \"average_first_hit_rank\": 8.1, \"outside_9_count\": 8}, \"60\": {\"within_9_rate\": 0.7667, \"average_first_hit_rank\": 7.1667, \"outside_9_count\": 14}, \"120\": {\"within_9_rate\": 0.7583, \"average_first_hit_rank\": 7.1, \"outside_9_count\": 29}}"
+      "detail": "{\"10\": {\"within_9_rate\": 0.9, \"average_first_hit_rank\": 5.7, \"outside_9_count\": 1}, \"30\": {\"within_9_rate\": 0.7333, \"average_first_hit_rank\": 7.8333, \"outside_9_count\": 8}, \"60\": {\"within_9_rate\": 0.7667, \"average_first_hit_rank\": 7.0833, \"outside_9_count\": 14}, \"120\": {\"within_9_rate\": 0.7583, \"average_first_hit_rank\": 7.0583, \"outside_9_count\": 29}}"
     },
     {
       "name": "special_hit_edge",
@@ -69,7 +69,7 @@
     {
       "name": "no_model_monopoly",
       "passed": true,
-      "detail": "0.16703647"
+      "detail": "0.20906575"
     },
     {
       "name": "candidate_49",
@@ -84,7 +84,7 @@
     {
       "name": "strongest_single_unique",
       "passed": true,
-      "detail": "{\"number\": 7, \"calibrated_probability\": 0.129325, \"selection_rule\": \"所有模型依30／120／360期三層成績、校準誤差與連續失誤重新配權後，取校準機率唯一第1名\", \"based_on_period\": \"26/080\", \"based_on_date\": \"2026-07-25\"}"
+      "detail": "{\"number\": 7, \"calibrated_probability\": 0.131675, \"selection_rule\": \"所有模型依30／120／360期三層成績、校準誤差與連續失誤重新配權後，取校準機率唯一第1名\", \"based_on_period\": \"26/081\", \"based_on_date\": \"2026-07-28\"}"
     },
     {
       "name": "suggested_sets",
