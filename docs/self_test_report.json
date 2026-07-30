@@ -2,34 +2,34 @@
   "system": "香港六合彩新世代鐵律預測系統",
   "generated_at": "2026-07-30",
   "passed": true,
-  "latest_period": "26/081",
-  "latest_date": "2026-07-28",
-  "target_date": "2026-07-30",
+  "latest_period": "26/082",
+  "latest_date": "2026-07-30",
+  "target_date": "2026-08-01",
   "checks": [
     {
       "name": "official_history_complete",
       "passed": true,
-      "detail": "4369 draws"
+      "detail": "4370 draws"
     },
     {
       "name": "history_latest_recent",
       "passed": true,
-      "detail": "26/081 2026-07-28; age=2 days"
+      "detail": "26/082 2026-07-30; age=0 days"
     },
     {
       "name": "announced_target_after_latest",
       "passed": true,
-      "detail": "2026-07-30 > 2026-07-28"
+      "detail": "2026-08-01 > 2026-07-30"
     },
     {
       "name": "target_not_stale",
       "passed": true,
-      "detail": "target=2026-07-30; today=2026-07-30"
+      "detail": "target=2026-08-01; today=2026-07-30"
     },
     {
       "name": "release_gate",
       "passed": true,
-      "detail": "{\"passed\": true, \"rule\": \"520期走步驗證須同時通過前段命中與機率校準，且不得由單一模型壟斷\", \"main_edge\": 5.835e-05, \"special_edge\": -7.19e-06, \"main_avg_hits\": 1.1404, \"main_random_hits\": 1.102, \"special_avg_hits\": 0.0788, \"special_random_hits\": 0.0612, \"max_main_weight\": 0.20906575}"
+      "detail": "{\"passed\": true, \"rule\": \"520期走步驗證須同時通過前段命中與機率校準，且不得由單一模型壟斷\", \"main_edge\": 5.261e-05, \"special_edge\": -1.013e-05, \"main_avg_hits\": 1.1423, \"main_random_hits\": 1.102, \"special_avg_hits\": 0.0788, \"special_random_hits\": 0.0612, \"max_main_weight\": 0.18542302}"
     },
     {
       "name": "walk_forward_520",
@@ -39,17 +39,17 @@
     {
       "name": "main_hit_edge",
       "passed": true,
-      "detail": "1.1404 > 1.102"
+      "detail": "1.1423 > 1.102"
     },
     {
       "name": "recent_60_within9_edge",
       "passed": true,
-      "detail": "0.7667 >= 0.7255"
+      "detail": "0.75 >= 0.7255"
     },
     {
       "name": "recent_120_hit_edge",
       "passed": true,
-      "detail": "1.15 >= 1.102"
+      "detail": "1.125 >= 1.102"
     },
     {
       "name": "new_weighting_v5",
@@ -59,7 +59,7 @@
     {
       "name": "top9_rank_audit",
       "passed": true,
-      "detail": "{\"10\": {\"within_9_rate\": 0.9, \"average_first_hit_rank\": 5.7, \"outside_9_count\": 1}, \"30\": {\"within_9_rate\": 0.7333, \"average_first_hit_rank\": 7.8333, \"outside_9_count\": 8}, \"60\": {\"within_9_rate\": 0.7667, \"average_first_hit_rank\": 7.0833, \"outside_9_count\": 14}, \"120\": {\"within_9_rate\": 0.7583, \"average_first_hit_rank\": 7.0583, \"outside_9_count\": 29}}"
+      "detail": "{\"10\": {\"within_9_rate\": 0.8, \"average_first_hit_rank\": 6.1, \"outside_9_count\": 2}, \"30\": {\"within_9_rate\": 0.7, \"average_first_hit_rank\": 8.1333, \"outside_9_count\": 9}, \"60\": {\"within_9_rate\": 0.75, \"average_first_hit_rank\": 7.1333, \"outside_9_count\": 15}, \"120\": {\"within_9_rate\": 0.75, \"average_first_hit_rank\": 7.1167, \"outside_9_count\": 30}}"
     },
     {
       "name": "special_hit_edge",
@@ -69,7 +69,7 @@
     {
       "name": "no_model_monopoly",
       "passed": true,
-      "detail": "0.20906575"
+      "detail": "0.18542302"
     },
     {
       "name": "candidate_49",
@@ -84,7 +84,7 @@
     {
       "name": "strongest_single_unique",
       "passed": true,
-      "detail": "{\"number\": 7, \"calibrated_probability\": 0.131675, \"selection_rule\": \"所有模型依30／120／360期三層成績、校準誤差與連續失誤重新配權後，取校準機率唯一第1名\", \"based_on_period\": \"26/081\", \"based_on_date\": \"2026-07-28\"}"
+      "detail": "{\"number\": 7, \"calibrated_probability\": 0.131266, \"selection_rule\": \"所有模型依30／120／360期三層成績、校準誤差與連續失誤重新配權後，取校準機率唯一第1名\", \"based_on_period\": \"26/082\", \"based_on_date\": \"2026-07-30\"}"
     },
     {
       "name": "suggested_sets",
