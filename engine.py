@@ -3,7 +3,7 @@ from __future__ import annotations
 import csv, json, math, statistics
 from collections import Counter
 from dataclasses import dataclass
-from datetime import date, timedelta
+from datetime import date as _date, datetime, timedelta, timezone
 from itertools import combinations
 from pathlib import Path
 
@@ -12,6 +12,11 @@ import numpy as np
 ROOT = Path(__file__).resolve().parent
 DATA = ROOT / "data" / "official_marksix.csv"
 N = 49
+
+class date(_date):
+    @classmethod
+    def today(cls):
+        return cls.fromisoformat(datetime.now(timezone(timedelta(hours=8))).date().isoformat())
 
 @dataclass(frozen=True)
 class Draw:

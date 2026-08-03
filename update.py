@@ -1,6 +1,6 @@
 from __future__ import annotations
 import csv,json,re,urllib.parse,urllib.request
-from datetime import date
+from datetime import date as _date,datetime,timedelta,timezone
 from engine import ROOT,load_draws,analyze
 from report import build_reports
 
@@ -8,6 +8,11 @@ API="https://www.mark6six.com/api/draws.php"
 NEXT_DRAW_URL="https://mark6.app/live"
 CSV_PATH=ROOT/"data"/"official_marksix.csv"
 HISTORY_PATH=ROOT/"data"/"prediction_history.json"
+
+class date(_date):
+    @classmethod
+    def today(cls):
+        return cls.fromisoformat(datetime.now(timezone(timedelta(hours=8))).date().isoformat())
 
 def fetch_page(limit=100,offset=0) -> dict:
     q=urllib.parse.urlencode({"limit":limit,"offset":offset,"order":"DESC"})

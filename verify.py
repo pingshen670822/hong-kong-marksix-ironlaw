@@ -1,8 +1,13 @@
 from __future__ import annotations
 import hashlib,json,sys
-from datetime import date
+from datetime import date as _date,datetime,timedelta,timezone
 from pathlib import Path
 from engine import ROOT,load_draws
+
+class date(_date):
+    @classmethod
+    def today(cls):
+        return cls.fromisoformat(datetime.now(timezone(timedelta(hours=8))).date().isoformat())
 
 def sha(p): return hashlib.sha256(p.read_bytes()).hexdigest()
 def main():
