@@ -97,6 +97,16 @@
       "detail": "{\"number\": 7, \"calibrated_probability\": 0.13784, \"selection_rule\": \"所有模型依30／120／360期三層成績、校準誤差與連續失誤重新配權後，取校準機率唯一第1名\", \"based_on_period\": \"26/083\", \"based_on_date\": \"2026-08-01\"}"
     },
     {
+      "name": "strongest_multi_logic_audit",
+      "passed": true,
+      "detail": "{\"number\": 7, \"label\": \"超高共識・本期唯一最強推薦\", \"super_consensus\": true, \"calibrated_probability\": 0.13784, \"fair_probability\": 0.122449, \"relative_lift_pct\": 12.57, \"score_gap_to_second\": 0.00215033, \"model_top9_support\": 10, \"model_top3_support\": 6, \"weighted_support_pct\": 93.79, \"checks\": {\"發布守門通過\": true, \"校準機率高於公平基準\": true, \"至少7個模型列入前9\": true, \"加權模型共識至少65%\": true, \"近60期前9覆蓋優於隨機\": true, \"近120期平均命中優於隨機\": true, \"第一名分數嚴格高於第二名\": true}, \"warning\": \"超高共識代表多項模型邏輯一致，不代表必中；六合彩單號公平基準仍約12.24%。\"}"
+    },
+    {
+      "name": "recommendation_tiers_clear",
+      "passed": true,
+      "detail": "A-E tiers"
+    },
+    {
       "name": "suggested_sets",
       "passed": true,
       "detail": "8 valid sets"
@@ -110,6 +120,16 @@
       "name": "report_cloud_sync",
       "passed": true,
       "detail": "byte-identical"
+    },
+    {
+      "name": "mobile_live_refresh",
+      "passed": true,
+      "detail": "60-second version polling + resume refresh"
+    },
+    {
+      "name": "autonomous_repair",
+      "passed": true,
+      "detail": "4 retries + post-draw two-hour watchdog"
     },
     {
       "name": "independent_branding",

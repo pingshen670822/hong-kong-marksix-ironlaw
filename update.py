@@ -93,11 +93,19 @@ def settle_and_save(result: dict):
     return history
 
 def main():
+    previous_target=None
+    previous_report=ROOT/"reports"/"latest_analysis.json"
+    if previous_report.exists():
+        try: previous_target=json.loads(previous_report.read_text(encoding="utf-8"))["target_date"]
+        except Exception: previous_target=None
     count=update_latest(); result=analyze(load_draws())
     announced_target=fetch_announced_next_draw()
     if date.fromisoformat(announced_target) <= date.fromisoformat(result["latest_draw"]["date"]):
         raise RuntimeError("下一期公告日期沒有晚於最新開獎日期；鐵律禁止發布")
-    result["target_date"]=announced_target
+    latest_date=result["latest_draw"]["date"]
+    waiting=bool(previous_target and previous_target<=date.today().isoformat() and latest_date<previous_target)
+    result["target_date"]=previous_target if waiting else announced_target
+    result["update_status"]="等待當期開獎資料，持續自動重試" if waiting else "最新資料已完成重算與同步"
     history=settle_and_save(result); build_reports(result,history)
     print(json.dumps({"draws":count,"latest":result["latest_draw"],"target":result["target_date"],"gate":result["release_gate"]},ensure_ascii=False,indent=2))
 if __name__=="__main__": main()

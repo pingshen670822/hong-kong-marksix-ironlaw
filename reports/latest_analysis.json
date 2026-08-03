@@ -3905,7 +3905,7 @@
           "first_hit_rank": 28,
           "within_9": false,
           "brier": 0.10874307385106541,
-          "logloss": 0.37777245978984086
+          "logloss": 0.377772459789841
         },
         {
           "period": "24/019",
@@ -4873,7 +4873,7 @@
           ],
           "first_hit_rank": 5,
           "within_9": true,
-          "brier": 0.10722991067305189,
+          "brier": 0.10722991067305192,
           "logloss": 0.37066779630962593
         },
         {
@@ -5044,7 +5044,7 @@
           "first_hit_rank": 21,
           "within_9": false,
           "brier": 0.10783216103729068,
-          "logloss": 0.373304534200769
+          "logloss": 0.3733045342007689
         },
         {
           "period": "24/086",
@@ -5588,7 +5588,7 @@
           "first_hit_rank": 4,
           "within_9": true,
           "brier": 0.10817562158063539,
-          "logloss": 0.3751809802315667
+          "logloss": 0.37518098023156676
         },
         {
           "period": "24/118",
@@ -8120,7 +8120,7 @@
           ],
           "first_hit_rank": 3,
           "within_9": true,
-          "brier": 0.10762538011362478,
+          "brier": 0.1076253801136248,
           "logloss": 0.3725613010748011
         },
         {
@@ -10000,6 +10000,72 @@
           "average_first_hit_rank": 7.2917,
           "outside_9_count": 31
         }
+      },
+      "confidence_audit": {
+        "number": 7,
+        "label": "超高共識・本期唯一最強推薦",
+        "super_consensus": true,
+        "calibrated_probability": 0.13784,
+        "fair_probability": 0.122449,
+        "relative_lift_pct": 12.57,
+        "score_gap_to_second": 0.00215033,
+        "model_top9_support": 10,
+        "model_top3_support": 6,
+        "weighted_support_pct": 93.79,
+        "checks": {
+          "發布守門通過": true,
+          "校準機率高於公平基準": true,
+          "至少7個模型列入前9": true,
+          "加權模型共識至少65%": true,
+          "近60期前9覆蓋優於隨機": true,
+          "近120期平均命中優於隨機": true,
+          "第一名分數嚴格高於第二名": true
+        },
+        "warning": "超高共識代表多項模型邏輯一致，不代表必中；六合彩單號公平基準仍約12.24%。"
+      },
+      "recommendation_tiers": {
+        "A_唯一最強": [
+          7
+        ],
+        "B_高信心前三": [
+          7,
+          32,
+          37
+        ],
+        "C_核心前九": [
+          7,
+          32,
+          37,
+          34,
+          26,
+          12,
+          17,
+          2,
+          16
+        ],
+        "D_次高防守": [
+          18,
+          28,
+          20,
+          14,
+          5,
+          6,
+          19,
+          21,
+          35
+        ],
+        "E_低機率暫避": [
+          3,
+          8,
+          9,
+          13,
+          24,
+          36,
+          38,
+          42,
+          43,
+          48
+        ]
       },
       "strongest_single_audit": {
         "number": 7,
@@ -14477,7 +14543,7 @@
           "first_hit_rank": 41,
           "within_9": false,
           "brier": 0.020030378458522857,
-          "logloss": 0.10058489002124171
+          "logloss": 0.10058489002124174
         },
         {
           "period": "25/062",
@@ -16365,5 +16431,6 @@
     "special_random_hits": 0.0612,
     "max_main_weight": 0.20547131
   },
-  "notice": "六合彩每期開獎為獨立隨機事件；本系統只做可回測的機率排序，不保證中獎。請量力而為，未滿18歲不得投注。"
+  "notice": "六合彩每期開獎為獨立隨機事件；本系統只做可回測的機率排序，不保證中獎。請量力而為，未滿18歲不得投注。",
+  "update_status": "等待當期開獎資料，持續自動重試"
 }

@@ -254,6 +254,24 @@ def analyze(draws: list[Draw]) -> dict:
     main_bt["weighting_strategy"]="前9碼三層滾動權重v5：30期60%＋120期25%＋360期15%，另加校準誤差與連續失誤懲罰，單模型上限22%"
     main_bt["within9_random_baseline"]=round(within9_random,4)
     main_bt["first_hit_rank_audit"]={str(w):{"within_9_rate":round(statistics.mean(r["within_9"] for r in main_bt["rows"][-w:]),4),"average_first_hit_rank":round(statistics.mean(r["first_hit_rank"] for r in main_bt["rows"][-w:]),4),"outside_9_count":sum(not r["within_9"] for r in main_bt["rows"][-w:])} for w in (10,30,60,120)}
+    strongest=rank[0]
+    current_models=model_suite(draws,False)
+    top9_support=[name for name in main_bt["names"] if strongest in (np.argsort(current_models[name])[::-1]+1)[:9]]
+    top3_support=[name for name in main_bt["names"] if strongest in (np.argsort(current_models[name])[::-1]+1)[:3]]
+    weighted_support=sum(main_bt["weights"][name] for name in top9_support)
+    fair_probability=6/49
+    confidence_checks={
+        "發布守門通過":gate,
+        "校準機率高於公平基準":float(ms[strongest-1])>fair_probability,
+        "至少7個模型列入前9":len(top9_support)>=7,
+        "加權模型共識至少65%":weighted_support>=.65,
+        "近60期前9覆蓋優於隨機":main_bt["first_hit_rank_audit"]["60"]["within_9_rate"]>=main_bt["within9_random_baseline"],
+        "近120期平均命中優於隨機":main_bt["ensemble_recent_hits"]["120"]>=main_random,
+        "第一名分數嚴格高於第二名":float(ms[rank[0]-1])>float(ms[rank[1]-1])
+    }
+    super_consensus=all(confidence_checks.values())
+    main_bt["confidence_audit"]={"number":strongest,"label":"超高共識・本期唯一最強推薦" if super_consensus else "本期唯一最強推薦（未達超高共識）","super_consensus":super_consensus,"calibrated_probability":round(float(ms[strongest-1]),6),"fair_probability":round(fair_probability,6),"relative_lift_pct":round((float(ms[strongest-1])/fair_probability-1)*100,2),"score_gap_to_second":round(float(ms[rank[0]-1]-ms[rank[1]-1]),8),"model_top9_support":len(top9_support),"model_top3_support":len(top3_support),"weighted_support_pct":round(weighted_support*100,2),"checks":confidence_checks,"warning":"超高共識代表多項模型邏輯一致，不代表必中；六合彩單號公平基準仍約12.24%。"}
+    main_bt["recommendation_tiers"]={"A_唯一最強":[strongest],"B_高信心前三":rank[:3],"C_核心前九":rank[:9],"D_次高防守":rank[9:18],"E_低機率暫避":sorted(rank[-10:])}
     main_bt["strongest_single_audit"]={"number":rank[0],"calibrated_probability":round(float(ms[rank[0]-1]),6),"selection_rule":"所有模型依30／120／360期三層成績、校準誤差與連續失誤重新配權後，取校準機率唯一第1名","based_on_period":draws[-1].period,"based_on_date":draws[-1].draw_date}
     return {"system":"香港六合彩新世代鐵律預測系統","engine":"marksix_cleanroom_ensemble_v3","generated_at":date.today().isoformat(),"history":{"count":len(draws),"first":draws[0].draw_date,"latest":draws[-1].draw_date,"latest_period":draws[-1].period},"latest_draw":{"period":draws[-1].period,"date":draws[-1].draw_date,"main":draws[-1].main,"special":draws[-1].special},"target_date":next_draw(draws[-1].draw_date,draws),"main_rank":[{"rank":i+1,"number":n,"probability":round(float(ms[n-1]),6)} for i,n in enumerate(rank)],"special_rank":[{"rank":i+1,"number":n,"probability":round(float(ss[n-1]),6)} for i,n in enumerate(srank)],"packs":{"最強單支":rank[:1],"二中一":rank[:2],"三中一":rank[:3],"五中二":rank[:5],"九中三":rank[:9],"主攻12碼":rank[:12],"防守18碼":rank[:18]},"special_packs":{"最強單支":srank[:1],"三碼觀察":srank[:3]},"avoid":{"五不中":sorted(rank[-5:]),"十不中":sorted(rank[-10:]),"十五不中":sorted(rank[-15:])},"suggested_sets":build_sets(ms),"rules":{"range":"1–49","main_numbers":6,"extra_numbers":1,"unit_bet_hkd":10,"prizes":{"一獎":"6個正選號碼","二獎":"5個正選號碼＋特別號","三獎":"5個正選號碼","四獎":"4個正選號碼＋特別號（固定HK$9,600）","五獎":"4個正選號碼（固定HK$640）","六獎":"3個正選號碼＋特別號（固定HK$320）","七獎":"3個正選號碼（固定HK$40）"}},"backtest":{"main":main_bt,"special":special_bt},"release_gate":{"passed":gate,"rule":"520期走步驗證須同時通過前段命中與機率校準，且不得由單一模型壟斷","main_edge":main_bt["logloss_edge"],"special_edge":special_bt["logloss_edge"],"main_avg_hits":main_bt["avg_hits"],"main_random_hits":round(main_random,4),"special_avg_hits":special_bt["avg_hits"],"special_random_hits":round(special_random,4),"max_main_weight":max(main_bt["weights"].values())},"notice":"六合彩每期開獎為獨立隨機事件；本系統只做可回測的機率排序，不保證中獎。請量力而為，未滿18歲不得投注。"}
 

@@ -5,9 +5,10 @@ on:
   schedule:
     # 每3小時檢查，涵蓋常態及節日／金多寶臨時開彩日。
     - cron: "0 * * * *"
-    # 香港時間21:15後密集檢查（UTC 13:20–14:30）。
+    # 香港時間21:20後密集檢查，並延伸至開獎後兩小時監控。
     - cron: "20-55/5 13 * * *"
     - cron: "0-30/5 14 * * *"
+    - cron: "35-55/5 15 * * *"
   workflow_dispatch:
 permissions:
   contents: write
@@ -23,8 +24,8 @@ jobs:
       - uses: actions/setup-python@v5
         with: {python-version: "3.12"}
       - run: pip install numpy==2.3.5
-      - name: 抓取六合彩、結算、重算、產生戰報
-        run: python update.py
+      - name: 抓取、重算、故障自修復（最多4次）
+        run: python watchdog.py
       - name: 發布前完整檢測
         run: python verify.py
       - name: 同步手機雲端

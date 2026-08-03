@@ -4,6 +4,9 @@ from datetime import date as _date,datetime,timedelta,timezone
 from pathlib import Path
 from engine import ROOT,load_draws
 
+if hasattr(sys.stdout,"reconfigure"):
+    sys.stdout.reconfigure(encoding="utf-8")
+
 class date(_date):
     @classmethod
     def today(cls):
@@ -41,10 +44,17 @@ def main():
     strongest=analysis["backtest"]["main"].get("strongest_single_audit",{})
     add("all_modules_rolling_reviewed",len(audit)==len(analysis["backtest"]["main"]["names"]) and all("decision" in x and "recent_120_avg_hits" in x for x in audit),f"{len(audit)} modules reviewed")
     add("strongest_single_unique",strongest.get("number")==analysis["packs"]["最強單支"][0] and analysis["main_rank"][0]["probability"]>analysis["main_rank"][1]["probability"],json.dumps(strongest,ensure_ascii=False))
+    confidence=analysis["backtest"]["main"].get("confidence_audit",{})
+    add("strongest_multi_logic_audit",confidence.get("number")==analysis["packs"]["最強單支"][0] and len(confidence.get("checks",{}))>=7 and all(isinstance(v,bool) for v in confidence.get("checks",{}).values()),json.dumps(confidence,ensure_ascii=False))
+    add("recommendation_tiers_clear",set(analysis["backtest"]["main"].get("recommendation_tiers",{}))=={"A_唯一最強","B_高信心前三","C_核心前九","D_次高防守","E_低機率暫避"},"A-E tiers")
     add("suggested_sets",len(analysis["suggested_sets"])==8 and all(len(set(x))==6 for x in analysis["suggested_sets"]),"8 valid sets")
     required=["index.html","latest_battle_report.html","latest_analysis.json","prediction_history.json","version.json","style.css","app.js","service-worker.js","manifest.webmanifest"]
     add("artifacts_complete",all((ROOT/base/x).exists() for base in ("reports","site","docs") for x in required),"all report and cloud files")
     add("report_cloud_sync",all(sha(ROOT/"reports"/x)==sha(ROOT/"site"/x)==sha(ROOT/"docs"/x) for x in required),"byte-identical")
+    app=(ROOT/"site/app.js").read_text(encoding="utf-8")
+    workflow=(ROOT/".github/workflows/update.yml").read_text(encoding="utf-8")
+    add("mobile_live_refresh","version.json" in app and "no-store" in app and "visibilitychange" in app,"60-second version polling + resume refresh")
+    add("autonomous_repair",(ROOT/"watchdog.py").exists() and "watchdog.py" in workflow and "35-55/5 15" in workflow,"4 retries + post-draw two-hour watchdog")
     banned=["天天樂","tiantianle","Fantasy","California"]
     files=[ROOT/"engine.py",ROOT/"update.py",ROOT/"report.py",ROOT/"README.md",ROOT/"site/index.html",ROOT/"reports/latest_analysis.json"]
     found={term:[str(p.relative_to(ROOT)) for p in files if p.exists() and term.lower() in p.read_text(encoding="utf-8").lower()] for term in banned}
