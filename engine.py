@@ -107,7 +107,19 @@ def trailing_zero_streak(values: list[int], cap: int=6) -> int:
         if streak>=cap: break
     return streak
 
-def walk_forward(draws: list[Draw], rounds: int=520, special: bool=False, weight_config: tuple[float,float,float,float,float]=(.50,.30,.20,3.4,.055)) -> dict:
+def combine_predictions(preds: np.ndarray, weights: np.ndarray, total: float, rank_mix: float=0.0) -> np.ndarray:
+    """混合機率平均與跨模型名次共識；rank_mix=0即保留原機率集成。"""
+    probability_score=np.average(preds,axis=0,weights=weights)
+    rank_rows=[]
+    for row in preds:
+        order=np.argsort(row)[::-1]
+        score=np.empty(N,dtype=float)
+        score[order]=np.linspace(1.0,0.0,N)
+        rank_rows.append(score)
+    consensus=normalize_probability(np.average(np.stack(rank_rows),axis=0,weights=weights),total)
+    return (1-rank_mix)*probability_score+rank_mix*consensus
+
+def walk_forward(draws: list[Draw], rounds: int=520, special: bool=False, weight_config: tuple[float,float,float,float,float]=(.50,.30,.20,3.4,.055), rank_mix: float=0.0) -> dict:
     start=max(360,len(draws)-rounds); names=list(model_suite(draws[:start],special))
     losses={n:[] for n in names}; hits={n:[] for n in names}; ensemble_rows=[]
     short_w,mid_w,long_w,temperature,streak_cost=weight_config
@@ -136,7 +148,7 @@ def walk_forward(draws: list[Draw], rounds: int=520, special: bool=False, weight
             q=np.array(quality); weights=np.exp(temperature*(q-q.max())); weights/=weights.sum()
             for _ in range(5):
                 weights=np.minimum(weights,.22); weights/=weights.sum()
-        raw_ensemble=np.average(preds,axis=0,weights=weights)
+        raw_ensemble=combine_predictions(preds,weights,1.0 if special else 6.0,rank_mix)
         # Lottery signals are weak: shrink aggressively toward the fair-draw prior while preserving rank.
         prior=np.full(N,(1 if special else 6)/N)
         ensemble=.20*raw_ensemble+.80*prior
@@ -159,7 +171,7 @@ def walk_forward(draws: list[Draw], rounds: int=520, special: bool=False, weight
 def final_scores(draws: list[Draw], bt: dict, special=False) -> np.ndarray:
     models=model_suite(draws,special); names=bt["names"]
     w=np.array([bt["weights"][n] for n in names]); w/=w.sum()
-    raw=np.average(np.stack([models[n] for n in names]),axis=0,weights=w)
+    raw=combine_predictions(np.stack([models[n] for n in names]),w,1.0 if special else 6.0,bt.get("rank_mix",0.0))
     prior=np.full(N,(1 if special else 6)/N)
     return .20*raw+.80*prior
 
@@ -203,7 +215,14 @@ def prize_division(selected: list[int] | tuple[int,...], draw: Draw) -> str | No
     return {(6,False):"一獎",(5,True):"二獎",(5,False):"三獎",(4,True):"四獎",(4,False):"五獎",(3,True):"六獎",(3,False):"七獎"}.get((hits,extra))
 
 def analyze(draws: list[Draw]) -> dict:
-    main_bt=walk_forward(draws,520,False,(.60,.25,.15,4.0,.07)); special_bt=walk_forward(draws,520,True)
+    champion=walk_forward(draws,520,False,(.60,.25,.15,4.0,.07),0.0)
+    challenger=walk_forward(draws,520,False,(.60,.25,.15,4.0,.07),0.5)
+    promote=(challenger["avg_hits"]>=champion["avg_hits"] and challenger["ensemble_recent_hits"]["60"]>=champion["ensemble_recent_hits"]["60"] and challenger["ensemble_recent_hits"]["120"]>=champion["ensemble_recent_hits"]["120"] and challenger["ensemble_logloss"]<=champion["ensemble_logloss"]+.00015)
+    main_bt=challenger if promote else champion
+    main_bt["rank_mix"]=0.5 if promote else 0.0
+    main_bt["champion_challenger"]={"promoted":"名次共識混合" if promote else "原機率集成","rule":"挑戰者須同時不低於520期、近60期、近120期命中，且對數損失不得明顯惡化","champion":{"avg520":champion["avg_hits"],"recent60":champion["ensemble_recent_hits"]["60"],"recent120":champion["ensemble_recent_hits"]["120"],"logloss":champion["ensemble_logloss"]},"challenger":{"avg520":challenger["avg_hits"],"recent60":challenger["ensemble_recent_hits"]["60"],"recent120":challenger["ensemble_recent_hits"]["120"],"logloss":challenger["ensemble_logloss"]}}
+    main_bt["external_method_review"]={"採用":["多窗口熱冷頻率","遺漏與經驗危險率","配對關聯","奇偶高低與和值結構","跨模型名次共識","嚴格時間序列走步回測"],"不直接採用":["宣稱必中AI","把逾期號視為必出","未經回測的三連號迷信","以增加注數冒充提高單號機率"]}
+    special_bt=walk_forward(draws,520,True)
     ms=final_scores(draws,main_bt); ss=final_scores(draws,special_bt,True)
     rank=(np.argsort(ms)[::-1]+1).tolist(); srank=(np.argsort(ss)[::-1]+1).tolist()
     # Publication gate measures calibration, not fabricated certainty.
