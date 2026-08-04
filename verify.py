@@ -52,8 +52,10 @@ def main():
     add("artifacts_complete",all((ROOT/base/x).exists() for base in ("reports","site","docs") for x in required),"all report and cloud files")
     add("report_cloud_sync",all(sha(ROOT/"reports"/x)==sha(ROOT/"site"/x)==sha(ROOT/"docs"/x) for x in required),"byte-identical")
     app=(ROOT/"site/app.js").read_text(encoding="utf-8")
+    page=(ROOT/"site/index.html").read_text(encoding="utf-8")
+    version=json.loads((ROOT/"site/version.json").read_text(encoding="utf-8"))
     workflow=(ROOT/".github/workflows/update.yml").read_text(encoding="utf-8")
-    add("mobile_live_refresh","version.json" in app and "no-store" in app and "visibilitychange" in app,"60-second version polling + resume refresh")
+    add("mobile_live_refresh",all(x in app for x in ("version.json","no-store","visibilitychange","pageHash","location.replace")) and f'content="{version["hash"]}"' in page,"page fingerprint + immediate cache-busting reload + 60-second polling + resume refresh")
     add("autonomous_repair",(ROOT/"watchdog.py").exists() and "watchdog.py" in workflow and "35-55/5 15" in workflow,"4 retries + post-draw two-hour watchdog")
     banned=["天天樂","tiantianle","Fantasy","California"]
     files=[ROOT/"engine.py",ROOT/"update.py",ROOT/"report.py",ROOT/"README.md",ROOT/"site/index.html",ROOT/"reports/latest_analysis.json"]

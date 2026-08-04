@@ -124,7 +124,7 @@
     {
       "name": "mobile_live_refresh",
       "passed": true,
-      "detail": "60-second version polling + resume refresh"
+      "detail": "page fingerprint + immediate cache-busting reload + 60-second polling + resume refresh"
     },
     {
       "name": "autonomous_repair",
