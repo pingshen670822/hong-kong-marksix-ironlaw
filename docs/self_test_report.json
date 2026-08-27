@@ -1,35 +1,35 @@
 {
   "system": "香港六合彩新世代鐵律預測系統",
-  "generated_at": "2026-08-27",
+  "generated_at": "2026-08-28",
   "passed": true,
-  "latest_period": "26/093",
-  "latest_date": "2026-08-25",
-  "target_date": "2026-08-27",
+  "latest_period": "26/094",
+  "latest_date": "2026-08-27",
+  "target_date": "2026-08-29",
   "checks": [
     {
       "name": "official_history_complete",
       "passed": true,
-      "detail": "4381 draws"
+      "detail": "4382 draws"
     },
     {
       "name": "history_latest_recent",
       "passed": true,
-      "detail": "26/093 2026-08-25; age=2 days"
+      "detail": "26/094 2026-08-27; age=1 days"
     },
     {
       "name": "announced_target_after_latest",
       "passed": true,
-      "detail": "2026-08-27 > 2026-08-25"
+      "detail": "2026-08-29 > 2026-08-27"
     },
     {
       "name": "target_not_stale",
       "passed": true,
-      "detail": "target=2026-08-27; today=2026-08-27"
+      "detail": "target=2026-08-29; today=2026-08-28"
     },
     {
       "name": "release_gate",
       "passed": true,
-      "detail": "{\"passed\": true, \"rule\": \"520期走步驗證須同時通過前段命中與機率校準，且不得由單一模型壟斷\", \"main_edge\": 1.909e-05, \"special_edge\": -1.74e-06, \"main_avg_hits\": 1.1288, \"main_random_hits\": 1.102, \"special_avg_hits\": 0.0808, \"special_random_hits\": 0.0612, \"max_main_weight\": 0.19846291}"
+      "detail": "{\"passed\": true, \"rule\": \"520期走步驗證須同時通過前段命中與機率校準，且不得由單一模型壟斷\", \"main_edge\": -0.00012862, \"special_edge\": -1.95e-06, \"main_avg_hits\": 1.1327, \"main_random_hits\": 1.102, \"special_avg_hits\": 0.0808, \"special_random_hits\": 0.0612, \"max_main_weight\": 0.20111513}"
     },
     {
       "name": "walk_forward_520",
@@ -39,7 +39,7 @@
     {
       "name": "main_hit_edge",
       "passed": true,
-      "detail": "1.1288 > 1.102"
+      "detail": "1.1327 > 1.102"
     },
     {
       "name": "recent_60_within9_edge",
@@ -49,7 +49,7 @@
     {
       "name": "recent_120_hit_edge",
       "passed": true,
-      "detail": "1.1167 >= 1.102"
+      "detail": "1.1333 >= 1.102"
     },
     {
       "name": "new_weighting_v5",
@@ -59,17 +59,17 @@
     {
       "name": "top9_rank_audit",
       "passed": true,
-      "detail": "{\"10\": {\"within_9_rate\": 0.8, \"average_first_hit_rank\": 7.7, \"outside_9_count\": 2}, \"30\": {\"within_9_rate\": 0.8, \"average_first_hit_rank\": 6.8, \"outside_9_count\": 6}, \"60\": {\"within_9_rate\": 0.7333, \"average_first_hit_rank\": 7.6167, \"outside_9_count\": 16}, \"120\": {\"within_9_rate\": 0.7667, \"average_first_hit_rank\": 7.0917, \"outside_9_count\": 28}}"
+      "detail": "{\"10\": {\"within_9_rate\": 0.8, \"average_first_hit_rank\": 7.9, \"outside_9_count\": 2}, \"30\": {\"within_9_rate\": 0.7667, \"average_first_hit_rank\": 6.8333, \"outside_9_count\": 7}, \"60\": {\"within_9_rate\": 0.7333, \"average_first_hit_rank\": 7.5, \"outside_9_count\": 16}, \"120\": {\"within_9_rate\": 0.75, \"average_first_hit_rank\": 7.3833, \"outside_9_count\": 30}}"
     },
     {
       "name": "champion_challenger_gate",
       "passed": true,
-      "detail": "{\"promoted\": \"原機率集成\", \"rule\": \"挑戰者須同時不低於520期、近60期、近120期命中，且對數損失不得明顯惡化\", \"champion\": {\"avg520\": 1.1288, \"recent60\": 1.05, \"recent120\": 1.1167, \"logloss\": 0.37175709}, \"challenger\": {\"avg520\": 1.1269, \"recent60\": 1.0667, \"recent120\": 1.125, \"logloss\": 0.37191224}}"
+      "detail": "{\"promoted\": \"名次共識混合\", \"rule\": \"挑戰者須同時不低於520期、近60期、近120期命中，且對數損失不得明顯惡化\", \"champion\": {\"avg520\": 1.1308, \"recent60\": 1.0667, \"recent120\": 1.1167, \"logloss\": 0.37175549}, \"challenger\": {\"avg520\": 1.1327, \"recent60\": 1.0833, \"recent120\": 1.1333, \"logloss\": 0.3719048}}"
     },
     {
       "name": "rank_consensus_selected",
       "passed": true,
-      "detail": "0.0"
+      "detail": "0.5"
     },
     {
       "name": "special_hit_edge",
@@ -79,7 +79,7 @@
     {
       "name": "no_model_monopoly",
       "passed": true,
-      "detail": "0.19846291"
+      "detail": "0.20111513"
     },
     {
       "name": "candidate_49",
@@ -94,12 +94,12 @@
     {
       "name": "strongest_single_unique",
       "passed": true,
-      "detail": "{\"number\": 7, \"calibrated_probability\": 0.134523, \"selection_rule\": \"所有模型依30／120／360期三層成績、校準誤差與連續失誤重新配權後，取校準機率唯一第1名\", \"based_on_period\": \"26/093\", \"based_on_date\": \"2026-08-25\"}"
+      "detail": "{\"number\": 7, \"calibrated_probability\": 0.138953, \"selection_rule\": \"所有模型依30／120／360期三層成績、校準誤差與連續失誤重新配權後，取校準機率唯一第1名\", \"based_on_period\": \"26/094\", \"based_on_date\": \"2026-08-27\"}"
     },
     {
       "name": "strongest_multi_logic_audit",
       "passed": true,
-      "detail": "{\"number\": 7, \"label\": \"超高共識・本期唯一最強推薦\", \"super_consensus\": true, \"calibrated_probability\": 0.134523, \"fair_probability\": 0.122449, \"relative_lift_pct\": 9.86, \"score_gap_to_second\": 0.00732316, \"model_top9_support\": 10, \"model_top3_support\": 9, \"weighted_support_pct\": 95.25, \"checks\": {\"發布守門通過\": true, \"校準機率高於公平基準\": true, \"至少7個模型列入前9\": true, \"加權模型共識至少65%\": true, \"近60期前9覆蓋優於隨機\": true, \"近120期平均命中優於隨機\": true, \"第一名分數嚴格高於第二名\": true}, \"warning\": \"超高共識代表多項模型邏輯一致，不代表必中；六合彩單號公平基準仍約12.24%。\"}"
+      "detail": "{\"number\": 7, \"label\": \"超高共識・本期唯一最強推薦\", \"super_consensus\": true, \"calibrated_probability\": 0.138953, \"fair_probability\": 0.122449, \"relative_lift_pct\": 13.48, \"score_gap_to_second\": 0.00483898, \"model_top9_support\": 9, \"model_top3_support\": 9, \"weighted_support_pct\": 86.71, \"checks\": {\"發布守門通過\": true, \"校準機率高於公平基準\": true, \"至少7個模型列入前9\": true, \"加權模型共識至少65%\": true, \"近60期前9覆蓋優於隨機\": true, \"近120期平均命中優於隨機\": true, \"第一名分數嚴格高於第二名\": true}, \"warning\": \"超高共識代表多項模型邏輯一致，不代表必中；六合彩單號公平基準仍約12.24%。\"}"
     },
     {
       "name": "recommendation_tiers_clear",
