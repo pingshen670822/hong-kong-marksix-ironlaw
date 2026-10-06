@@ -56,6 +56,7 @@ def main():
     version=json.loads((ROOT/"site/version.json").read_text(encoding="utf-8"))
     workflow=(ROOT/".github/workflows/update.yml").read_text(encoding="utf-8")
     add("mobile_live_refresh",all(x in app for x in ("version.json","no-store","visibilitychange","pageHash","location.replace")) and f'content="{version["hash"]}"' in page,"page fingerprint + immediate cache-busting reload + 60-second polling + resume refresh")
+    add("mobile_manual_controls",all(x in page for x in ('id="manual-refresh"','id="emergency-repair"','id="cloud-action-status"')) and all(x in app for x in ("manualRefresh","emergencyRepair","resetClient","cloudSnapshot","cloud-self-repair.yml")),"manual latest-data refresh + cache reset + secure second-layer rescue entry")
     add("dual_track_governance",analysis.get("operational_policy",{}).get("model_gate_blocks_data") is False,"data sync independent from model gate")
     recovery=ROOT/".github/workflows/cloud-self-repair.yml"
     add("autonomous_repair",all((ROOT/x).exists() for x in ("watchdog.py","health_check.py","daily_integrity_audit.py")) and recovery.exists() and "watchdog.py" in workflow and "health_check.py" in workflow and "workflow_run" in recovery.read_text(encoding="utf-8"),"primary retry + failure diagnostics + second-layer cloud recovery + integrity audit + health check")

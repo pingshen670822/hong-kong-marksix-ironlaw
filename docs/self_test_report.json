@@ -154,6 +154,12 @@
       "detail": "page fingerprint + immediate cache-busting reload + 60-second polling + resume refresh"
     },
     {
+      "name": "mobile_manual_controls",
+      "passed": true,
+      "severity": "critical",
+      "detail": "manual latest-data refresh + cache reset + secure second-layer rescue entry"
+    },
+    {
       "name": "dual_track_governance",
       "passed": true,
       "severity": "critical",
