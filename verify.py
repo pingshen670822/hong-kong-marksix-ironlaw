@@ -55,7 +55,7 @@ def main():
     page=(ROOT/"site/index.html").read_text(encoding="utf-8")
     version=json.loads((ROOT/"site/version.json").read_text(encoding="utf-8"))
     workflow=(ROOT/".github/workflows/update.yml").read_text(encoding="utf-8")
-    add("mobile_live_refresh",all(x in app for x in ("version.json","no-store","visibilitychange","pageHash","location.replace")) and f'content="{version["hash"]}"' in page,"page fingerprint + immediate cache-busting reload + 60-second polling + resume refresh")
+    add("mobile_live_refresh",all(x in app for x in ("version.json","no-store","visibilitychange","pageHash","pageGeneratedAt","cloudVersionIsNewer","location.replace")) and f'content="{version["hash"]}"' in page and f'content="{version["updated_at"]}"' in page,"page fingerprint + monotonic timestamp guard + cache-busting reload + 60-second polling + resume refresh")
     add("mobile_manual_controls",all(x in page for x in ('id="manual-refresh"','id="emergency-repair"','id="cloud-action-status"','id="last-manual-update"')) and all(x in app for x in ("manualRefresh","emergencyRepair","resetClient","cloudSnapshot","cloud-self-repair.yml","localStorage","marksix-last-manual-update","Asia/Taipei")),"manual latest-data refresh + persistent completion time + cache reset + secure second-layer rescue entry")
     navigation=("本期預測","回測驗證","開獎檢討","歷史封存","模型說明","系統健康")
     css=(ROOT/"site/style.css").read_text(encoding="utf-8")

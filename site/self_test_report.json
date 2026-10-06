@@ -151,7 +151,7 @@
       "name": "mobile_live_refresh",
       "passed": true,
       "severity": "critical",
-      "detail": "page fingerprint + immediate cache-busting reload + 60-second polling + resume refresh"
+      "detail": "page fingerprint + monotonic timestamp guard + cache-busting reload + 60-second polling + resume refresh"
     },
     {
       "name": "mobile_manual_controls",
