@@ -12,6 +12,15 @@ from engine import ROOT
 def run(script: str) -> subprocess.CompletedProcess[str]:
     return subprocess.run([sys.executable, str(ROOT / script)], cwd=ROOT, text=True, encoding="utf-8", errors="replace", capture_output=True)
 
+def write_status(payload: dict) -> None:
+    text=json.dumps(payload,ensure_ascii=False,indent=2)
+    for name in ("reports","site","docs"):
+        path=ROOT/name/"repair_status.json"
+        path.parent.mkdir(exist_ok=True)
+        tmp=path.with_suffix(".tmp")
+        tmp.write_text(text,encoding="utf-8")
+        tmp.replace(path)
+
 
 def stale_after_two_hours() -> tuple[bool, str]:
     analysis=json.loads((ROOT/"reports"/"latest_analysis.json").read_text(encoding="utf-8"))
@@ -27,13 +36,19 @@ def main() -> int:
     for attempt in range(1,5):
         updated=run("update.py")
         verified=run("verify.py") if updated.returncode==0 else updated
+        healthy=run("health_check.py") if verified.returncode==0 else verified
         stale,detail=(False,"update failed") if updated.returncode else stale_after_two_hours()
-        if updated.returncode==0 and verified.returncode==0 and not stale:
-            print(json.dumps({"self_repair":"passed","attempt":attempt,"detail":detail},ensure_ascii=False))
+        if updated.returncode==0 and verified.returncode==0 and healthy.returncode==0 and not stale:
+            payload={"self_repair":"passed","attempt":attempt,"checked_at":datetime.now(timezone(timedelta(hours=8))).isoformat(timespec="seconds"),"detail":detail}
+            write_status(payload)
+            print(json.dumps(payload,ensure_ascii=False))
             return 0
-        errors.append({"attempt":attempt,"update":updated.stderr[-1000:],"verify":verified.stderr[-1000:],"stale":stale,"detail":detail})
+        errors.append({"attempt":attempt,"update":(updated.stdout+updated.stderr)[-1600:],"verify":(verified.stdout+verified.stderr)[-1600:],"health":(healthy.stdout+healthy.stderr)[-1600:],"stale":stale,"detail":detail})
+        write_status({"self_repair":"retrying","attempt":attempt,"checked_at":datetime.now(timezone(timedelta(hours=8))).isoformat(timespec="seconds"),"errors":errors[-1:]})
         if attempt<4: time.sleep(30*attempt)
-    print(json.dumps({"self_repair":"failed","errors":errors},ensure_ascii=False,indent=2))
+    payload={"self_repair":"failed","checked_at":datetime.now(timezone(timedelta(hours=8))).isoformat(timespec="seconds"),"errors":errors}
+    write_status(payload)
+    print(json.dumps(payload,ensure_ascii=False,indent=2))
     return 1
 
 

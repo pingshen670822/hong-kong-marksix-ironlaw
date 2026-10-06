@@ -1,0 +1,50 @@
+{
+  "system": "香港六合彩新世代鐵律預測系統",
+  "checked_at": "2026-10-06T08:14:18+08:00",
+  "passed": true,
+  "latest_period": "26/105",
+  "latest_date": "2026-10-03",
+  "prediction_gate_passed": false,
+  "checks": [
+    {
+      "name": "row_count_consistent",
+      "passed": true,
+      "detail": "csv=4393 parsed=4393"
+    },
+    {
+      "name": "unique_draw_dates",
+      "passed": true,
+      "detail": "duplicates=0"
+    },
+    {
+      "name": "unique_periods",
+      "passed": true,
+      "detail": "duplicates=0"
+    },
+    {
+      "name": "chronological_order",
+      "passed": true,
+      "detail": "first=1993-01-05 latest=2026-10-03"
+    },
+    {
+      "name": "numbers_valid",
+      "passed": true,
+      "detail": "six unique main numbers + separate special, all 1-49"
+    },
+    {
+      "name": "settlements_immutable_and_matched",
+      "passed": true,
+      "detail": "settled=15"
+    },
+    {
+      "name": "analysis_based_on_latest",
+      "passed": true,
+      "detail": "analysis=2026-10-03 csv=2026-10-03"
+    },
+    {
+      "name": "prediction_snapshot_exists",
+      "passed": true,
+      "detail": "26/105"
+    }
+  ]
+}

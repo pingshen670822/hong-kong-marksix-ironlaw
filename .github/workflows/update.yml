@@ -3,7 +3,7 @@ on:
   push:
     branches: [main]
   schedule:
-    # 每3小時檢查，涵蓋常態及節日／金多寶臨時開彩日。
+    # 每小時健康檢查，涵蓋常態及節日／金多寶臨時開彩日。
     - cron: "0 * * * *"
     # 香港時間21:20後密集檢查，並延伸至開獎後兩小時監控。
     - cron: "20-55/5 13 * * *"
@@ -26,8 +26,12 @@ jobs:
       - run: pip install numpy==2.3.5
       - name: 抓取、重算、故障自修復（最多4次）
         run: python watchdog.py
-      - name: 發布前完整檢測
+      - name: 每日資料完整性稽核
+        run: python daily_integrity_audit.py
+      - name: 發布前雙軌檢測（資料故障阻擋、模型未達門檻降級）
         run: python verify.py
+      - name: 全系統健康檢測
+        run: python health_check.py
       - name: 同步手機雲端
         run: |
           git config user.name "hk-marksix-engine-bot"

@@ -1,139 +1,174 @@
 {
   "system": "香港六合彩新世代鐵律預測系統",
-  "generated_at": "2026-09-10",
+  "generated_at": "2026-10-06",
   "passed": true,
-  "latest_period": "26/097",
-  "latest_date": "2026-09-08",
-  "target_date": "2026-09-10",
+  "operational_passed": true,
+  "prediction_gate_passed": false,
+  "status": "系統正常・預測觀察級",
+  "latest_period": "26/105",
+  "latest_date": "2026-10-03",
+  "target_date": "2026-10-06",
   "checks": [
     {
       "name": "official_history_complete",
       "passed": true,
-      "detail": "4385 draws"
+      "severity": "critical",
+      "detail": "4393 draws"
     },
     {
       "name": "history_latest_recent",
       "passed": true,
-      "detail": "26/097 2026-09-08; age=2 days"
+      "severity": "critical",
+      "detail": "26/105 2026-10-03; age=3 days"
     },
     {
       "name": "announced_target_after_latest",
       "passed": true,
-      "detail": "2026-09-10 > 2026-09-08"
+      "severity": "critical",
+      "detail": "2026-10-06 > 2026-10-03"
     },
     {
       "name": "target_not_stale",
       "passed": true,
-      "detail": "target=2026-09-10; today=2026-09-10"
+      "severity": "critical",
+      "detail": "target=2026-10-06; today=2026-10-06"
     },
     {
       "name": "release_gate",
-      "passed": true,
-      "detail": "{\"passed\": true, \"rule\": \"520期走步驗證須同時通過前段命中與機率校準，且不得由單一模型壟斷\", \"main_edge\": -0.00011592, \"special_edge\": 2.92e-06, \"main_avg_hits\": 1.1327, \"main_random_hits\": 1.102, \"special_avg_hits\": 0.0808, \"special_random_hits\": 0.0612, \"max_main_weight\": 0.17475058}"
+      "passed": false,
+      "severity": "advisory",
+      "detail": "{\"passed\": false, \"publish_mode\": \"觀察級排序\", \"rule\": \"預測信心守門與開獎資料同步分離；未達門檻只降級標示，絕不可阻斷最新資料更新\", \"main_edge\": 3.376e-05, \"special_edge\": 1.047e-05, \"main_avg_hits\": 1.1365, \"main_random_hits\": 1.102, \"special_avg_hits\": 0.0808, \"special_random_hits\": 0.0612, \"max_main_weight\": 0.20057309}"
     },
     {
       "name": "walk_forward_520",
       "passed": true,
+      "severity": "critical",
       "detail": "520"
     },
     {
       "name": "main_hit_edge",
       "passed": true,
-      "detail": "1.1327 > 1.102"
+      "severity": "advisory",
+      "detail": "1.1365 > 1.102"
     },
     {
       "name": "recent_60_within9_edge",
       "passed": true,
+      "severity": "advisory",
       "detail": "0.7333 >= 0.7255"
     },
     {
       "name": "recent_120_hit_edge",
-      "passed": true,
-      "detail": "1.1083 >= 1.102"
+      "passed": false,
+      "severity": "advisory",
+      "detail": "1.0917 >= 1.102"
     },
     {
       "name": "new_weighting_v5",
       "passed": true,
+      "severity": "critical",
       "detail": "前9碼三層滾動權重v5：30期60%＋120期25%＋360期15%，另加校準誤差與連續失誤懲罰，單模型上限22%"
     },
     {
       "name": "top9_rank_audit",
       "passed": true,
-      "detail": "{\"10\": {\"within_9_rate\": 0.8, \"average_first_hit_rank\": 5.7, \"outside_9_count\": 2}, \"30\": {\"within_9_rate\": 0.7667, \"average_first_hit_rank\": 6.6667, \"outside_9_count\": 7}, \"60\": {\"within_9_rate\": 0.7333, \"average_first_hit_rank\": 7.3667, \"outside_9_count\": 16}, \"120\": {\"within_9_rate\": 0.7417, \"average_first_hit_rank\": 7.4583, \"outside_9_count\": 31}}"
+      "severity": "critical",
+      "detail": "{\"10\": {\"within_9_rate\": 0.7, \"average_first_hit_rank\": 6.6, \"outside_9_count\": 3}, \"30\": {\"within_9_rate\": 0.7667, \"average_first_hit_rank\": 6.6667, \"outside_9_count\": 7}, \"60\": {\"within_9_rate\": 0.7333, \"average_first_hit_rank\": 7.3833, \"outside_9_count\": 16}, \"120\": {\"within_9_rate\": 0.7667, \"average_first_hit_rank\": 7.1333, \"outside_9_count\": 28}}"
     },
     {
       "name": "champion_challenger_gate",
       "passed": true,
-      "detail": "{\"promoted\": \"名次共識混合\", \"rule\": \"挑戰者須同時不低於520期、近60期、近120期命中，且對數損失不得明顯惡化\", \"champion\": {\"avg520\": 1.1288, \"recent60\": 1.0167, \"recent120\": 1.1, \"logloss\": 0.37174806}, \"challenger\": {\"avg520\": 1.1327, \"recent60\": 1.0333, \"recent120\": 1.1083, \"logloss\": 0.3718921}}"
+      "severity": "critical",
+      "detail": "{\"promoted\": \"原機率集成\", \"rule\": \"挑戰者須同時不低於520期、近60期、近120期命中，且對數損失不得明顯惡化\", \"champion\": {\"avg520\": 1.1365, \"recent60\": 0.9833, \"recent120\": 1.0917, \"logloss\": 0.37174242}, \"challenger\": {\"avg520\": 1.1385, \"recent60\": 0.95, \"recent120\": 1.075, \"logloss\": 0.37187947}}"
     },
     {
       "name": "rank_consensus_selected",
       "passed": true,
-      "detail": "0.5"
+      "severity": "critical",
+      "detail": "0.0"
     },
     {
       "name": "special_hit_edge",
       "passed": true,
+      "severity": "advisory",
       "detail": "0.0808 > 0.0612"
     },
     {
       "name": "no_model_monopoly",
       "passed": true,
-      "detail": "0.17475058"
+      "severity": "advisory",
+      "detail": "0.20057309"
     },
     {
       "name": "candidate_49",
       "passed": true,
+      "severity": "critical",
       "detail": "main/special 49"
     },
     {
       "name": "all_modules_rolling_reviewed",
       "passed": true,
+      "severity": "critical",
       "detail": "11 modules reviewed"
     },
     {
       "name": "strongest_single_unique",
       "passed": true,
-      "detail": "{\"number\": 7, \"calibrated_probability\": 0.139023, \"selection_rule\": \"所有模型依30／120／360期三層成績、校準誤差與連續失誤重新配權後，取校準機率唯一第1名\", \"based_on_period\": \"26/097\", \"based_on_date\": \"2026-09-08\"}"
+      "severity": "critical",
+      "detail": "{\"number\": 31, \"calibrated_probability\": 0.131201, \"selection_rule\": \"所有模型依30／120／360期三層成績、校準誤差與連續失誤重新配權後，取校準機率唯一第1名\", \"based_on_period\": \"26/105\", \"based_on_date\": \"2026-10-03\"}"
     },
     {
       "name": "strongest_multi_logic_audit",
       "passed": true,
-      "detail": "{\"number\": 7, \"label\": \"超高共識・本期唯一最強推薦\", \"super_consensus\": true, \"calibrated_probability\": 0.139023, \"fair_probability\": 0.122449, \"relative_lift_pct\": 13.54, \"score_gap_to_second\": 0.00612773, \"model_top9_support\": 9, \"model_top3_support\": 9, \"weighted_support_pct\": 83.23, \"checks\": {\"發布守門通過\": true, \"校準機率高於公平基準\": true, \"至少7個模型列入前9\": true, \"加權模型共識至少65%\": true, \"近60期前9覆蓋優於隨機\": true, \"近120期平均命中優於隨機\": true, \"第一名分數嚴格高於第二名\": true}, \"warning\": \"超高共識代表多項模型邏輯一致，不代表必中；六合彩單號公平基準仍約12.24%。\"}"
+      "severity": "critical",
+      "detail": "{\"number\": 31, \"label\": \"觀察級・本期唯一最強排序（未達超高共識）\", \"super_consensus\": false, \"calibrated_probability\": 0.131201, \"fair_probability\": 0.122449, \"relative_lift_pct\": 7.15, \"score_gap_to_second\": 0.00012385, \"model_top9_support\": 7, \"model_top3_support\": 6, \"weighted_support_pct\": 69.71, \"checks\": {\"發布守門通過\": false, \"校準機率高於公平基準\": true, \"至少7個模型列入前9\": true, \"加權模型共識至少65%\": true, \"近60期前9覆蓋優於隨機\": true, \"近120期平均命中優於隨機\": false, \"第一名分數嚴格高於第二名\": true}, \"warning\": \"超高共識代表多項模型邏輯一致，不代表必中；六合彩單號公平基準仍約12.24%。未通過守門時只列觀察排序，不得冒充高信心推薦。\"}"
     },
     {
       "name": "recommendation_tiers_clear",
       "passed": true,
+      "severity": "critical",
       "detail": "A-E tiers"
     },
     {
       "name": "suggested_sets",
       "passed": true,
+      "severity": "critical",
       "detail": "8 valid sets"
     },
     {
       "name": "artifacts_complete",
       "passed": true,
+      "severity": "critical",
       "detail": "all report and cloud files"
     },
     {
       "name": "report_cloud_sync",
       "passed": true,
+      "severity": "critical",
       "detail": "byte-identical"
     },
     {
       "name": "mobile_live_refresh",
       "passed": true,
+      "severity": "critical",
       "detail": "page fingerprint + immediate cache-busting reload + 60-second polling + resume refresh"
+    },
+    {
+      "name": "dual_track_governance",
+      "passed": true,
+      "severity": "critical",
+      "detail": "data sync independent from model gate"
     },
     {
       "name": "autonomous_repair",
       "passed": true,
-      "detail": "4 retries + post-draw two-hour watchdog"
+      "severity": "critical",
+      "detail": "retry + integrity audit + health check"
     },
     {
       "name": "independent_branding",
       "passed": true,
+      "severity": "critical",
       "detail": "{}"
     }
   ]

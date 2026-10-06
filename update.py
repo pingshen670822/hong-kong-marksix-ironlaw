@@ -41,7 +41,13 @@ def fetch_announced_next_draw() -> str:
     if not m: raise RuntimeError("無法取得已公告的下一期日期；鐵律禁止用錯誤日期發布")
     return f"{int(m.group(1)):04d}-{int(m.group(2)):02d}-{int(m.group(3)):02d}"
 
-def update_latest() -> int:
+def _normalized(rows: list[dict]) -> dict[str, tuple[tuple[int, ...], int]]:
+    return {
+        str(item["draw_date"]): (tuple(sorted(map(int,item["numbers"]))),int(item["extra_number"]))
+        for item in rows
+    }
+
+def update_latest() -> dict:
     raw_rows=list(csv.DictReader(CSV_PATH.open(encoding="utf-8-sig",newline="")))
     fields=list(raw_rows[0])
     # 同一開彩日可能在不同來源帶有節慶後綴；保留資訊較完整的正式期別。
@@ -58,7 +64,13 @@ def update_latest() -> int:
     try: fallback=fetch_on99_year(date.today().year)
     except Exception as exc:
         fallback=[]; source_errors.append(f"fallback:{type(exc).__name__}")
-    incoming=primary+fallback
+    primary_by_date=_normalized(primary); fallback_by_date=_normalized(fallback)
+    overlaps=sorted(set(primary_by_date)&set(fallback_by_date))
+    conflicts=[d for d in overlaps if primary_by_date[d]!=fallback_by_date[d]]
+    if conflicts:
+        raise RuntimeError("六合彩雙來源資料不一致，停止覆寫："+",".join(conflicts[-5:]))
+    # 主來源優先；備援只補主來源缺少的日期，避免同日資料被靜默覆寫。
+    incoming=primary+[item for item in fallback if item["draw_date"] not in primary_by_date]
     if not incoming:
         raise RuntimeError("所有六合彩開獎資料源同時失敗；鐵律禁止使用舊資料假裝更新："+",".join(source_errors))
     for item in incoming:
@@ -76,7 +88,8 @@ def update_latest() -> int:
     tmp=CSV_PATH.with_suffix(".tmp")
     with tmp.open("w",encoding="utf-8-sig",newline="") as f:
         w=csv.DictWriter(f,fieldnames=fields); w.writeheader(); w.writerows(ordered)
-    tmp.replace(CSV_PATH); return len(ordered)
+    tmp.replace(CSV_PATH)
+    return {"draws":len(ordered),"primary_rows":len(primary),"fallback_rows":len(fallback),"crosschecked_dates":len(overlaps),"source_errors":source_errors}
 
 def settle_and_save(result: dict):
     history=json.loads(HISTORY_PATH.read_text(encoding="utf-8-sig")) if HISTORY_PATH.exists() else []
@@ -98,14 +111,36 @@ def main():
     if previous_report.exists():
         try: previous_target=json.loads(previous_report.read_text(encoding="utf-8"))["target_date"]
         except Exception: previous_target=None
-    count=update_latest(); result=analyze(load_draws())
-    announced_target=fetch_announced_next_draw()
-    if date.fromisoformat(announced_target) <= date.fromisoformat(result["latest_draw"]["date"]):
-        raise RuntimeError("下一期公告日期沒有晚於最新開獎日期；鐵律禁止發布")
+    source_status=update_latest(); result=analyze(load_draws())
+    schedule_error=None
+    try: announced_target=fetch_announced_next_draw()
+    except Exception as exc:
+        announced_target=None; schedule_error=f"{type(exc).__name__}: {exc}"
     latest_date=result["latest_draw"]["date"]
-    waiting=bool(previous_target and previous_target<=date.today().isoformat() and latest_date<previous_target)
-    result["target_date"]=previous_target if waiting else announced_target
-    result["update_status"]="等待當期開獎資料，持續自動重試" if waiting else "最新資料已完成重算與同步"
+    if announced_target and date.fromisoformat(announced_target) <= date.fromisoformat(latest_date):
+        schedule_error="公告日期沒有晚於最新開獎日期"
+        announced_target=None
+    provisional_target=result["target_date"]
+    if announced_target:
+        # 若官方公告已把舊目標日往後移，必須解除舊日期鎖，避免永久卡死。
+        target=announced_target
+        target_source="公告日期"
+    elif previous_target and previous_target>latest_date:
+        target=previous_target
+        target_source="上次有效公告（日期來源暫時無法連線）"
+    else:
+        target=provisional_target
+        target_source="開彩規則推算（待公告來源恢復後覆核）"
+    waiting=bool(target<=date.today().isoformat() and latest_date<target)
+    result["target_date"]=target
+    result["target_source"]=target_source
+    result["data_source_status"]={**source_status,"schedule_error":schedule_error}
+    if waiting:
+        result["update_status"]="開獎資料尚未出現，保留最後有效資料並持續自動重試"
+    elif schedule_error:
+        result["update_status"]="最新開獎資料已同步；下期日期來源暫時降級並持續覆核"
+    else:
+        result["update_status"]="最新資料已完成抓取、結算、重算與手機同步"
     history=settle_and_save(result); build_reports(result,history)
-    print(json.dumps({"draws":count,"latest":result["latest_draw"],"target":result["target_date"],"gate":result["release_gate"]},ensure_ascii=False,indent=2))
+    print(json.dumps({"data":source_status,"latest":result["latest_draw"],"target":result["target_date"],"target_source":target_source,"gate":result["release_gate"]},ensure_ascii=False,indent=2))
 if __name__=="__main__": main()
