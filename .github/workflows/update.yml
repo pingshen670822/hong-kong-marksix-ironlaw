@@ -32,9 +32,27 @@ jobs:
         run: python verify.py
       - name: 全系統健康檢測
         run: python health_check.py
-      - name: 同步手機雲端
+      - name: 成功後同步完整手機雲端
+        if: success()
         run: |
           git config user.name "hk-marksix-engine-bot"
           git config user.email "actions@github.com"
           git add data reports site docs
           git diff --cached --quiet || (git commit -m "六合彩新核心開獎後自動更新" && git push)
+      - name: 失敗時保留雲端故障證據
+        if: failure()
+        env:
+          RUN_ID: ${{ github.run_id }}
+        run: |
+          python - <<'PY'
+          import json,os
+          from datetime import datetime,timezone
+          from pathlib import Path
+          payload={"status":"主更新失敗，第二層雲端救援即將啟動","run_id":os.environ["RUN_ID"],"recorded_at":datetime.now(timezone.utc).isoformat()}
+          for base in ("reports","site","docs"):
+              Path(base,"cloud_failure_status.json").write_text(json.dumps(payload,ensure_ascii=False,indent=2),encoding="utf-8")
+          PY
+          git config user.name "hk-marksix-repair-bot"
+          git config user.email "actions@github.com"
+          git add reports/repair_status.json site/repair_status.json docs/repair_status.json reports/cloud_failure_status.json site/cloud_failure_status.json docs/cloud_failure_status.json
+          git diff --cached --quiet || (git commit -m "記錄六合彩雲端故障並啟動救援" && git push)

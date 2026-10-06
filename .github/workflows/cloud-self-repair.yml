@@ -1,0 +1,59 @@
+name: 香港六合彩第二層雲端自主修復
+on:
+  workflow_run:
+    workflows: ["香港六合彩新核心自動更新"]
+    types: [completed]
+  workflow_dispatch:
+permissions:
+  contents: write
+concurrency:
+  group: hk-marksix-new-engine
+  cancel-in-progress: false
+jobs:
+  repair:
+    if: github.event_name == 'workflow_dispatch' || github.event.workflow_run.conclusion == 'failure'
+    runs-on: ubuntu-latest
+    timeout-minutes: 35
+    steps:
+      - uses: actions/checkout@v4
+        with: {ref: main}
+      - uses: actions/setup-python@v5
+        with: {python-version: "3.12"}
+      - run: pip install numpy==2.3.5
+      - name: 第二層重新抓取與自主修復
+        id: repair_run
+        continue-on-error: true
+        run: python watchdog.py
+      - name: 修復成功後重新完整稽核
+        if: steps.repair_run.outcome == 'success'
+        run: |
+          python daily_integrity_audit.py
+          python verify.py
+          python health_check.py
+      - name: 修復成功後同步完整資料與手機戰報
+        if: steps.repair_run.outcome == 'success'
+        run: |
+          git config user.name "hk-marksix-repair-bot"
+          git config user.email "actions@github.com"
+          git add data reports site docs
+          git diff --cached --quiet || (git commit -m "六合彩第二層雲端自主修復成功" && git push)
+      - name: 修復仍失敗時保留診斷狀態
+        if: steps.repair_run.outcome != 'success'
+        env:
+          RUN_ID: ${{ github.run_id }}
+        run: |
+          python - <<'PY'
+          import json,os
+          from datetime import datetime,timezone
+          from pathlib import Path
+          payload={"status":"第二層救援仍在等待外部資料源恢復；主排程將於下次時段再次重試","run_id":os.environ["RUN_ID"],"recorded_at":datetime.now(timezone.utc).isoformat()}
+          for base in ("reports","site","docs"):
+              Path(base,"cloud_failure_status.json").write_text(json.dumps(payload,ensure_ascii=False,indent=2),encoding="utf-8")
+          PY
+          git config user.name "hk-marksix-repair-bot"
+          git config user.email "actions@github.com"
+          git add reports/repair_status.json site/repair_status.json docs/repair_status.json reports/cloud_failure_status.json site/cloud_failure_status.json docs/cloud_failure_status.json
+          git diff --cached --quiet || (git commit -m "六合彩第二層救援持續重試中" && git push)
+      - name: 標記第二層救援尚未完成
+        if: steps.repair_run.outcome != 'success'
+        run: exit 1

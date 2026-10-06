@@ -57,7 +57,8 @@ def main():
     workflow=(ROOT/".github/workflows/update.yml").read_text(encoding="utf-8")
     add("mobile_live_refresh",all(x in app for x in ("version.json","no-store","visibilitychange","pageHash","location.replace")) and f'content="{version["hash"]}"' in page,"page fingerprint + immediate cache-busting reload + 60-second polling + resume refresh")
     add("dual_track_governance",analysis.get("operational_policy",{}).get("model_gate_blocks_data") is False,"data sync independent from model gate")
-    add("autonomous_repair",all((ROOT/x).exists() for x in ("watchdog.py","health_check.py","daily_integrity_audit.py")) and "watchdog.py" in workflow and "health_check.py" in workflow,"retry + integrity audit + health check")
+    recovery=ROOT/".github/workflows/cloud-self-repair.yml"
+    add("autonomous_repair",all((ROOT/x).exists() for x in ("watchdog.py","health_check.py","daily_integrity_audit.py")) and recovery.exists() and "watchdog.py" in workflow and "health_check.py" in workflow and "workflow_run" in recovery.read_text(encoding="utf-8"),"primary retry + failure diagnostics + second-layer cloud recovery + integrity audit + health check")
     banned=["天天樂","tiantianle","Fantasy","California"]
     files=[ROOT/"engine.py",ROOT/"update.py",ROOT/"report.py",ROOT/"README.md",ROOT/"site/index.html",ROOT/"reports/latest_analysis.json"]
     found={term:[str(p.relative_to(ROOT)) for p in files if p.exists() and term.lower() in p.read_text(encoding="utf-8").lower()] for term in banned}

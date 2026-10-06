@@ -163,7 +163,7 @@
       "name": "autonomous_repair",
       "passed": true,
       "severity": "critical",
-      "detail": "retry + integrity audit + health check"
+      "detail": "primary retry + failure diagnostics + second-layer cloud recovery + integrity audit + health check"
     },
     {
       "name": "independent_branding",
