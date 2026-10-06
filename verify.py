@@ -56,10 +56,19 @@ def main():
     version=json.loads((ROOT/"site/version.json").read_text(encoding="utf-8"))
     workflow=(ROOT/".github/workflows/update.yml").read_text(encoding="utf-8")
     add("mobile_live_refresh",all(x in app for x in ("version.json","no-store","visibilitychange","pageHash","location.replace")) and f'content="{version["hash"]}"' in page,"page fingerprint + immediate cache-busting reload + 60-second polling + resume refresh")
-    add("mobile_manual_controls",all(x in page for x in ('id="manual-refresh"','id="emergency-repair"','id="cloud-action-status"')) and all(x in app for x in ("manualRefresh","emergencyRepair","resetClient","cloudSnapshot","cloud-self-repair.yml")),"manual latest-data refresh + cache reset + secure second-layer rescue entry")
+    add("mobile_manual_controls",all(x in page for x in ('id="manual-refresh"','id="emergency-repair"','id="cloud-action-status"','id="last-manual-update"')) and all(x in app for x in ("manualRefresh","emergencyRepair","resetClient","cloudSnapshot","cloud-self-repair.yml","localStorage","marksix-last-manual-update","Asia/Taipei")),"manual latest-data refresh + persistent completion time + cache reset + secure second-layer rescue entry")
+    navigation=("本期預測","回測驗證","開獎檢討","歷史封存","模型說明","系統健康")
+    css=(ROOT/"site/style.css").read_text(encoding="utf-8")
+    service_worker=(ROOT/"site/service-worker.js").read_text(encoding="utf-8")
+    add("interface_539_spec",all(label in page for label in navigation) and 'class="band strong' in page and 'class="report-details"' in page and all(marker in css for marker in ("#f3f4f6","#7f1017","repeat(6,minmax(0,1fr))",".report-details")),"six 539 categories + red header/nav + band cards + collapsible full calculations")
+    add("version_timezone_explicit",version.get("timezone")=="Asia/Taipei" and "+08:00" in version.get("updated_at","") and "雲端戰報產生" in page,"cloud generation time is explicit Asia/Taipei")
+    add("resilient_service_worker","Promise.allSettled" in service_worker and ".addAll(" not in service_worker and "request.method!=='GET'" in service_worker,"one failed asset cannot abort service-worker installation")
+    add("version_poll_decoupled","async function fetchVersion" in app and "async function checkVersion(){try{const version=await fetchVersion()" in app,"background version polling does not depend on analysis fetch")
     add("dual_track_governance",analysis.get("operational_policy",{}).get("model_gate_blocks_data") is False,"data sync independent from model gate")
     recovery=ROOT/".github/workflows/cloud-self-repair.yml"
-    add("autonomous_repair",all((ROOT/x).exists() for x in ("watchdog.py","health_check.py","daily_integrity_audit.py")) and recovery.exists() and "watchdog.py" in workflow and "health_check.py" in workflow and "workflow_run" in recovery.read_text(encoding="utf-8"),"primary retry + failure diagnostics + second-layer cloud recovery + integrity audit + health check")
+    recovery_text=recovery.read_text(encoding="utf-8")
+    add("autonomous_repair",all((ROOT/x).exists() for x in ("watchdog.py","health_check.py","daily_integrity_audit.py")) and recovery.exists() and "watchdog.py" in workflow and "health_check.py" in workflow and "workflow_run" in recovery_text,"primary retry + failure diagnostics + second-layer cloud recovery + integrity audit + health check")
+    add("workflow_runtime_current",all(marker in workflow+recovery_text for marker in ("actions/checkout@v7","actions/setup-python@v7")) and "@v4" not in workflow+recovery_text and "@v5" not in workflow+recovery_text,"GitHub Actions use current Node 24 runtime actions")
     banned=["天天樂","tiantianle","Fantasy","California"]
     files=[ROOT/"engine.py",ROOT/"update.py",ROOT/"report.py",ROOT/"README.md",ROOT/"site/index.html",ROOT/"reports/latest_analysis.json"]
     found={term:[str(p.relative_to(ROOT)) for p in files if p.exists() and term.lower() in p.read_text(encoding="utf-8").lower()] for term in banned}

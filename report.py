@@ -1,100 +1,257 @@
 from __future__ import annotations
-import hashlib,html,json,re,shutil
+
+import hashlib
+import html
+import json
 from collections import defaultdict
-from datetime import datetime
+from datetime import datetime, timedelta, timezone
 from pathlib import Path
+
 from engine import ROOT
 
-REPORTS=ROOT/"reports"; SITE=ROOT/"site"; DOCS=ROOT/"docs"
-REPORT_SCHEMA_VERSION="2026-10-06-mobile-manual-repair-v3"
-def e(x): return html.escape(str(x))
-def balls(nums,kind=""): return "".join(f'<span class="ball {kind}">{int(n):02d}</span>' for n in nums)
-def atomic_write(path: Path,text: str):
-    tmp=path.with_suffix(path.suffix+".tmp")
-    tmp.write_text(text,encoding="utf-8")
+
+REPORTS = ROOT / "reports"
+SITE = ROOT / "site"
+DOCS = ROOT / "docs"
+HK = timezone(timedelta(hours=8))
+REPORT_SCHEMA_VERSION = "2026-10-06-539-interface-persistent-update-v4"
+
+
+def e(value):
+    return html.escape(str(value))
+
+
+def balls(numbers, kind=""):
+    return "".join(f'<span class="ball {kind}">{int(number):02d}</span>' for number in numbers)
+
+
+def atomic_write(path: Path, text: str):
+    tmp = path.with_suffix(path.suffix + ".tmp")
+    tmp.write_text(text, encoding="utf-8")
     tmp.replace(path)
-def table(head,rows,empty="目前沒有已結算資料"):
-    body="".join("<tr>"+"".join(f"<td>{x}</td>" for x in row)+"</tr>" for row in rows) or f'<tr><td colspan="{len(head)}">{empty}</td></tr>'
-    return '<div class="scroll"><table><tr>'+''.join(f'<th>{e(x)}</th>' for x in head)+f'</tr>{body}</table></div>'
+
+
+def table(headings, rows, empty="目前沒有已結算資料"):
+    body = "".join(
+        "<tr>" + "".join(f"<td>{cell}</td>" for cell in row) + "</tr>"
+        for row in rows
+    ) or f'<tr><td colspan="{len(headings)}" class="empty">{e(empty)}</td></tr>'
+    return (
+        '<div class="table-wrap"><table><thead><tr>'
+        + "".join(f"<th>{e(heading)}</th>" for heading in headings)
+        + f"</tr></thead><tbody>{body}</tbody></table></div>"
+    )
+
 
 def settled_rows(history):
-    out=[]
-    for p in reversed(history):
-        if p.get("status")!="settled": continue
-        s=p["settlement"]; a=p["actual"]; aset=set(a["main"])
-        hit_numbers="、".join(map(str,s["pack_hits"]["主攻12碼"]["numbers"])) or "—"
-        strongest=p["packs"]["最強單支"][0]
-        strongest_hit=strongest in aset
-        out.append([e(p["target_date"]),balls([strongest]),"命中" if strongest_hit else "未中",balls(p["packs"]["主攻12碼"]),balls(a["main"],"actual")+f'<span class="special">特 {a["special"]:02d}</span>',e(s["pack_hits"]["主攻12碼"]["count"]),e(hit_numbers),"命中" if s["special_hit"] else "未中"])
-    return out
+    rows = []
+    for prediction in reversed(history):
+        if prediction.get("status") != "settled":
+            continue
+        settlement = prediction["settlement"]
+        actual = prediction["actual"]
+        actual_main = set(actual["main"])
+        hit_numbers = "、".join(map(str, settlement["pack_hits"]["主攻12碼"]["numbers"])) or "—"
+        strongest = prediction["packs"]["最強單支"][0]
+        rows.append([
+            e(prediction["target_date"]),
+            e(prediction.get("based_on_period", "—")),
+            balls([strongest]),
+            "命中" if strongest in actual_main else "未中",
+            balls(prediction["packs"]["主攻12碼"]),
+            balls(actual["main"], "actual") + f'<span class="special">特 {actual["special"]:02d}</span>',
+            e(settlement["pack_hits"]["主攻12碼"]["count"]),
+            e(hit_numbers),
+            "命中" if settlement["special_hit"] else "未中",
+        ])
+    return rows
+
 
 def monthly_rows(history):
-    g=defaultdict(list)
-    for p in history:
-        if p.get("status")=="settled": g[p["target_date"][:7]].append(p)
-    out=[]
-    for month,items in sorted(g.items(),reverse=True):
-        hits=[p["settlement"]["pack_hits"]["主攻12碼"]["count"] for p in items]
-        out.append([month,len(items),sum(hits),f"{sum(hits)/len(hits):.2f}",max(hits),sum(p["settlement"]["special_hit"] for p in items)])
-    return out
+    grouped = defaultdict(list)
+    for prediction in history:
+        if prediction.get("status") == "settled":
+            grouped[prediction["target_date"][:7]].append(prediction)
+    rows = []
+    for month, items in sorted(grouped.items(), reverse=True):
+        hits = [item["settlement"]["pack_hits"]["主攻12碼"]["count"] for item in items]
+        rows.append([month, len(items), sum(hits), f"{sum(hits) / len(hits):.2f}", max(hits), sum(item["settlement"]["special_hit"] for item in items)])
+    return rows
 
-def build_reports(a,history):
-    REPORTS.mkdir(exist_ok=True); SITE.mkdir(exist_ok=True); DOCS.mkdir(exist_ok=True)
-    cand=a["main_rank"][:18]; bt=a["backtest"]
-    gate_pass=bool(a["release_gate"]["passed"])
-    gate_text="超高共識通過" if gate_pass else "觀察級・滾動檢修中"
-    gate_class="pass" if gate_pass else "warn"
-    analysis=json.dumps(a,ensure_ascii=False,indent=2)
-    version={"updated_at":datetime.now().isoformat(timespec="seconds"),"latest_period":a["latest_draw"]["period"],"hash":hashlib.sha256((REPORT_SCHEMA_VERSION+analysis).encode()).hexdigest()[:16]}
-    candidate_rows=[[x["rank"],balls([x["number"]]),f'{x["probability"]*100:.3f}%'] for x in cand]
-    review={x["model"]:x for x in bt["main"]["module_review"]}
-    model_rows=[[e(n),review[n]["latest_hit_count"],f'{review[n]["recent_30_avg_hits"]:.3f}',f'{review[n]["recent_120_avg_hits"]:.3f}',f'{review[n]["recent_360_avg_hits"]:.3f}',review[n]["failure_streak"],f'{bt["main"]["weights"][n]*100:.2f}%',e(review[n]["decision"])] for n in bt["main"]["names"]]
-    rank_audit_rows=[[f"近{w}期",f'{bt["main"]["first_hit_rank_audit"][w]["within_9_rate"]*100:.1f}%',bt["main"]["first_hit_rank_audit"][w]["average_first_hit_rank"],bt["main"]["first_hit_rank_audit"][w]["outside_9_count"]] for w in ("10","30","60","120")]
-    cc=bt["main"]["champion_challenger"]
-    champion_rows=[["原機率集成",cc["champion"]["avg520"],cc["champion"]["recent60"],cc["champion"]["recent120"],cc["champion"]["logloss"]],["名次共識混合",cc["challenger"]["avg520"],cc["challenger"]["recent60"],cc["challenger"]["recent120"],cc["challenger"]["logloss"]]]
-    low_rows=[]
-    for p in reversed(history):
-        if p.get("status")!="settled": continue
-        err=p["settlement"]["avoid_errors"]["十不中"]
-        low_rows.append([e(p["target_date"]),balls(p["avoid"]["十不中"],"avoid"),balls(err,"actual") if err else "—",len(err),"誤開號解除暫避" if err else "守住"])
-    html_text=f'''<!doctype html><html lang="zh-Hant"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><meta name="theme-color" content="#86151b"><meta name="report-version" content="{version['hash']}"><link rel="manifest" href="manifest.webmanifest"><link rel="stylesheet" href="style.css"><title>香港六合彩新世代鐵律戰報</title></head><body><header><h1>香港六合彩新世代鐵律戰報</h1><p>{a['history']['count']:,}期歷史基底・520期走步驗證・資料更新與模型守門雙軌分離</p></header><nav>{''.join(f'<button data-tab="{i}">{t}</button>' for i,t in [('decision','核心決策'),('verify','逐號驗算'),('packs','短包強牌'),('avoid','低機率'),('review','戰果檢討'),('models','模型回測'),('monthly','每月總結'),('iron','規則與守門')])}</nav><main>
-<section id="decision" class="tab active"><section class="cloud-actions" aria-label="雲端更新與修復"><div class="action-buttons"><button type="button" id="manual-refresh" class="cloud-action refresh-action">手動更新最新</button><button type="button" id="emergency-repair" class="cloud-action repair-action">當機立即修復</button></div><p id="cloud-action-status" class="cloud-action-status" role="status" aria-live="polite">可隨時強制檢查最新資料；當機修復會清除失效快取並重新連接雲端。</p></section><div class="cards"><article><b>最新資料</b><strong>{a['latest_draw']['date']}／{a['latest_draw']['period']}</strong></article><article><b>預測目標</b><strong>{a['target_date']}</strong><small>{e(a.get('target_source',''))}</small></article><article><b>預測信心守門</b><strong class="{gate_class}">{gate_text}</strong></article><article><b>雲端雙層自修復</b><strong class="pass">監控正常</strong><small>每小時檢查・開獎後密集重試・失敗自動切換第二層救援</small></article></div><h2>明確行動牌</h2>{''.join(f'<article class="pack"><h3>{e(k)}</h3>{balls(v)}</article>' for k,v in a['packs'].items())}<article class="pack specialpack"><h3>特別號三碼觀察</h3>{balls(a['special_packs']['三碼觀察'],'specialball')}</article><h2>八組結構平衡建議</h2>{''.join(f'<article class="set"><b>第{i+1}組</b>{balls(s)}</article>' for i,s in enumerate(a['suggested_sets']))}</section>
-<section id="verify" class="tab"><h2>逐號交叉驗算</h2><p>機率經80%公平開獎先驗收縮，避免將微弱歷史訊號包裝成高信心。</p>{table(['順位','號碼','校準機率'],candidate_rows)}</section>
-<section id="packs" class="tab"><h2>短包強牌</h2>{''.join(f'<article class="pack"><h3>{e(k)}</h3>{balls(v)}</article>' for k,v in a['packs'].items() if k in ('最強單支','二中一','三中一','五中二','九中三'))}<h2>特別號獨立運算</h2>{''.join(f'<article class="pack specialpack"><h3>{e(k)}</h3>{balls(v,"specialball")}</article>' for k,v in a['special_packs'].items())}</section>
-<section id="avoid" class="tab"><h2>下期低機率暫避</h2><p>本區只做風險排序，不代表絕對不開；與攻擊牌完全分離。</p>{''.join(f'<article class="pack low"><h3>{e(k)}</h3>{balls(v,"avoid")}</article>' for k,v in a['avoid'].items())}<h2>上期誤開檢討</h2>{table(['目標日','原十不中','誤開號','顆數','修正'],low_rows)}</section>
-<section id="review" class="tab"><h2>預測對實際逐期驗算</h2><p>預測先封存，開獎後只結算，禁止回改舊牌。</p>{table(['目標日','原最強獨支','獨支戰果','原主攻12碼','實際開獎','12碼命中','命中號','特別號'],settled_rows(history))}</section>
-<section id="models" class="tab"><h2>520期前9碼時間序列走步回測</h2><div class="cards"><article><b>前9碼平均命中</b><strong>{bt['main']['avg_hits']}</strong><small>隨機基準 {a['release_gate']['main_random_hits']}</small></article><article><b>近60期至少1顆進前9</b><strong>{bt['main']['first_hit_rank_audit']['60']['within_9_rate']*100:.1f}%</strong><small>隨機基準 {bt['main']['within9_random_baseline']*100:.1f}%</small></article><article><b>近120期前9碼命中</b><strong>{bt['main']['ensemble_recent_hits']['120']}</strong><small>超高共識門檻 ≥ {a['release_gate']['main_random_hits']}</small></article></div><h2>第10名後問題專項檢測</h2>{table(['窗口','至少1顆進前9比例','首顆平均名次','完全落在9名後期數'],rank_audit_rows)}<h2>前9碼三層滾動權重</h2><p>{e(bt['main']['weighting_strategy'])}</p><h2>逐模組錯誤檢討與滾動調整</h2>{table(['模型','上期前9命中','近30期','近120期','近360期','連續失誤','新權重','調整決策'],model_rows)}<h2>最強獨支運算鐵律</h2><p>所有模型以「前9碼命中」為訓練與扣權目標，依30／120／360期成績、校準誤差與連續失誤重新配權，再取校準機率唯一第1名；只使用開獎前已存在的歷史資料，嚴禁回填。</p><h2>失敗回饋規則</h2><ul><li>每期檢查所有實際號碼的預測名次</li><li>首顆命中落到第10名後即列入錯誤檢討</li><li>短期30期占60%，120期占25%，360期占15%</li><li>校準誤差及連續零命中會額外扣權</li><li>單一模型權重上限22%</li><li>未達信心門檻時禁止標示超高信心，改列觀察級；最新開獎資料仍必須同步</li></ul></section>
-<section id="monthly" class="tab"><h2>每月總整理</h2>{table(['月份','結算期數','總命中','平均命中','單期最高','特別號命中'],monthly_rows(history))}</section>
-<section id="iron" class="tab"><h2>最新版六合彩規則</h2><p>1至49選6個正選號碼，每注HK$10；另開1個特別號。</p>{table(['獎級','中獎條件','固定獎金'],[['一獎','6個正選','彩池制'],['二獎','5個正選＋特別號','彩池制'],['三獎','5個正選','彩池制'],['四獎','4個正選＋特別號','HK$9,600'],['五獎','4個正選','HK$640'],['六獎','3個正選＋特別號','HK$320'],['七獎','3個正選','HK$40']])}<h2>鐵律守門</h2><ol><li>資料須通過期別、日期、6個正選號碼、特別號完整驗證</li><li>預測封存後不可因開獎結果修改</li><li>回測嚴格按時間順序，禁止偷看未來</li><li>主攻、低機率、上期檢討、月結分區顯示</li><li>抓號失敗保留最後有效版本，絕不以假資料覆寫</li><li>主流程失敗自動啟動第二層雲端救援，後續每小時持續重試</li><li>臨時開彩日及金多寶一律以香港賽馬會公告為準</li></ol><h2>生命週期</h2><p>開獎資料 → 雙來源交叉驗證 → 上期結算 → 失敗回饋 → 520期重測 → 健康稽核 → 戰報生成 → 手機同步 → 失敗時第二層救援</p></section>
-<p class="notice">{e(a['notice'])}</p></main><footer>資料基準 {a['latest_draw']['date']}・目標 {a['target_date']}・核心 {a['engine']}</footer><script src="app.js"></script></body></html>'''
-    conf=bt["main"]["confidence_audit"]; tiers=bt["main"]["recommendation_tiers"]
-    check_rows=[[e(name),"通過" if passed else "未通過"] for name,passed in conf["checks"].items()]
-    action_title="強烈推薦" if conf["super_consensus"] else "本期最強排序（觀察級）"
-    confidence_html=f'''<article class="hero-recommend {'approved' if conf['super_consensus'] else 'degraded'}"><span class="confidence-label">{e(conf['label'])}</span><h2>{action_title} {balls([conf['number']])}</h2><p>校準機率 {conf['calibrated_probability']*100:.3f}%・公平基準 {conf['fair_probability']*100:.3f}%・相對提升 {conf['relative_lift_pct']:.2f}%</p><p>模型前9支持 {conf['model_top9_support']}/{len(bt['main']['names'])}・加權共識 {conf['weighted_support_pct']:.2f}%</p><small>{e(conf['warning'])}</small></article><h2>多項邏輯驗證</h2>{table(['檢查項目','結果'],check_rows)}<h2>清楚分層推薦</h2><article class="pack tier-a"><h3>A級・唯一最強排序</h3>{balls(tiers['A_唯一最強'])}</article><article class="pack tier-b"><h3>B級・前三排序</h3>{balls(tiers['B_高信心前三'])}</article><article class="pack"><h3>C級・核心前九</h3>{balls(tiers['C_核心前九'])}</article><article class="pack"><h3>D級・次高防守</h3>{balls(tiers['D_次高防守'])}</article><article class="pack low"><h3>E級・低機率暫避</h3>{balls(tiers['E_低機率暫避'],'avoid')}</article>'''
-    html_text=re.sub(r'<h2>明確行動牌</h2>.*?<article class="pack specialpack">',confidence_html+'<h2>特別號獨立運算</h2><article class="pack specialpack">',html_text,count=1,flags=re.S)
-    research=bt["main"]["external_method_review"]
-    research_html='<h2>外部預測系統方法研究</h2><h3>通過本系統驗證並採用</h3><ul>'+''.join(f'<li>{e(x)}</li>' for x in research['採用'])+'</ul><h3>拒絕直接採用</h3><ul>'+''.join(f'<li>{e(x)}</li>' for x in research['不直接採用'])+'</ul>'
-    challenger_html=f'<h2>冠軍／挑戰者實測</h2><p>本期升級：{e(cc["promoted"])}。{e(cc["rule"])}</p>'+table(['版本','520期','近60期','近120期','對數損失'],champion_rows)
-    html_text=html_text.replace('<h2>前9碼三層滾動權重</h2>',research_html+challenger_html+'<h2>前9碼三層滾動權重</h2>')
-    css='''*{box-sizing:border-box}body{margin:0;background:#fff7ea;color:#281916;font:16px/1.55 system-ui,"Noto Sans TC",sans-serif}header{padding:26px 16px;text-align:center;color:#fff;background:linear-gradient(135deg,#611017,#b72b22)}header h1{margin:0}nav{position:sticky;top:0;z-index:5;display:flex;overflow:auto;background:#fff;box-shadow:0 3px 14px #0002}nav button{min-width:105px;flex:1;padding:14px 8px;border:0;background:#fff;font-weight:800;font-size:14px}nav button.on{color:#971923;border-bottom:4px solid #971923}main{max-width:1050px;margin:auto;padding:18px}.tab{display:none}.tab.active{display:block}.cloud-actions{margin:0 0 16px;padding:14px;border:1px solid #e0bd86;border-radius:18px;background:linear-gradient(135deg,#fff,#fff1d7);box-shadow:0 5px 20px #5d1b1014}.action-buttons{display:grid;grid-template-columns:1fr 1fr;gap:12px}.cloud-action{min-height:52px;padding:12px 16px;border:0;border-radius:14px;color:#fff;font:900 1rem/1.2 system-ui,"Noto Sans TC",sans-serif;box-shadow:0 5px 14px #3b140f28;cursor:pointer;touch-action:manipulation}.cloud-action:focus-visible{outline:4px solid #e2a82e;outline-offset:3px}.cloud-action:disabled{opacity:.62;cursor:wait}.refresh-action{background:linear-gradient(135deg,#0b6f54,#07906b)}.repair-action{background:linear-gradient(135deg,#7c151b,#bd2824)}.cloud-action-status{min-height:25px;margin:10px 2px 0;color:#634c42;font-size:.9rem}.cloud-action-status.ok{color:#087348;font-weight:800}.cloud-action-status.error{color:#a51f1f;font-weight:800}.cards{display:grid;grid-template-columns:repeat(auto-fit,minmax(210px,1fr));gap:12px}.cards article,.pack,.set{background:#fff;border-radius:16px;padding:16px;margin:10px 0;box-shadow:0 4px 18px #5d1b1015}.cards b,.cards strong,.cards small{display:block;margin:5px}.pass{color:#087348}.warn{color:#a55c00}.pack{border-left:6px solid #ac7a1f}.tier-a{border-color:#d4a017;background:#fff8d6}.tier-b{border-color:#a71c23}.hero-recommend{padding:22px;margin:18px 0;border:3px solid #d4a017;border-radius:20px;color:#fff;box-shadow:0 8px 28px #71111944}.hero-recommend.approved{background:linear-gradient(135deg,#711119,#b62522)}.hero-recommend.degraded{background:linear-gradient(135deg,#5d3d18,#91651e)}.hero-recommend h2{font-size:1.55rem}.hero-recommend .ball{background:#ffd34e;color:#661017;width:56px;height:56px;font-size:1.35rem}.confidence-label{display:inline-block;padding:7px 12px;border-radius:999px;background:#ffd34e;color:#661017;font-weight:900}.hero-recommend small{display:block;opacity:.95}.low{border-color:#596576}.specialpack{border-color:#d08a00}.ball{display:inline-grid;place-items:center;width:39px;height:39px;margin:4px;border-radius:50%;background:#a71c23;color:white;font-weight:900}.actual{background:#087348}.avoid{background:#596576}.specialball,.special{background:#d08a00}.special{display:inline-block;padding:8px;color:#fff;border-radius:10px}.scroll{overflow:auto}table{width:100%;border-collapse:collapse;background:#fff}th,td{padding:10px;border-bottom:1px solid #ead7c4;text-align:left}.notice,footer{text-align:center;padding:18px;color:#6b5049}@media(max-width:680px){.cards{grid-template-columns:1fr}.ball{width:34px;height:34px;margin:3px}th,td{min-width:90px;font-size:14px}.hero-recommend{padding:16px}.hero-recommend h2{font-size:1.25rem}}@media(max-width:520px){.action-buttons{grid-template-columns:1fr}.cloud-action{min-height:56px;font-size:1.05rem}}'''
-    js='''document.querySelectorAll('nav button').forEach((b,i)=>{if(!i)b.classList.add('on');b.onclick=()=>{document.querySelectorAll('.tab').forEach(x=>x.classList.remove('active'));document.querySelectorAll('nav button').forEach(x=>x.classList.remove('on'));document.getElementById(b.dataset.tab).classList.add('active');b.classList.add('on')}});
+
+def build_reports(analysis_data, history):
+    for directory in (REPORTS, SITE, DOCS):
+        directory.mkdir(exist_ok=True)
+
+    candidates = analysis_data["main_rank"][:18]
+    backtest = analysis_data["backtest"]
+    main_test = backtest["main"]
+    gate_passed = bool(analysis_data["release_gate"]["passed"])
+    gate_text = "超高共識通過" if gate_passed else "觀察級・未達強推薦門檻"
+    gate_class = "ok" if gate_passed else "bad"
+    analysis_json = json.dumps(analysis_data, ensure_ascii=False, indent=2)
+    generated_at = datetime.now(HK).isoformat(timespec="seconds")
+    version = {
+        "updated_at": generated_at,
+        "timezone": "Asia/Taipei",
+        "latest_period": analysis_data["latest_draw"]["period"],
+        "latest_date": analysis_data["latest_draw"]["date"],
+        "hash": hashlib.sha256((REPORT_SCHEMA_VERSION + analysis_json).encode()).hexdigest()[:16],
+    }
+
+    candidate_rows = [[candidate["rank"], balls([candidate["number"]]), f'{candidate["probability"] * 100:.3f}%'] for candidate in candidates]
+    module_review = {item["model"]: item for item in main_test["module_review"]}
+    model_rows = [[
+        e(name),
+        module_review[name]["latest_hit_count"],
+        f'{module_review[name]["recent_30_avg_hits"]:.3f}',
+        f'{module_review[name]["recent_120_avg_hits"]:.3f}',
+        f'{module_review[name]["recent_360_avg_hits"]:.3f}',
+        module_review[name]["failure_streak"],
+        f'{main_test["weights"][name] * 100:.2f}%',
+        e(module_review[name]["decision"]),
+    ] for name in main_test["names"]]
+    rank_audit_rows = [[
+        f"近{window}期",
+        f'{main_test["first_hit_rank_audit"][window]["within_9_rate"] * 100:.1f}%',
+        main_test["first_hit_rank_audit"][window]["average_first_hit_rank"],
+        main_test["first_hit_rank_audit"][window]["outside_9_count"],
+    ] for window in ("10", "30", "60", "120")]
+    champion = main_test["champion_challenger"]
+    champion_rows = [
+        ["原機率集成", champion["champion"]["avg520"], champion["champion"]["recent60"], champion["champion"]["recent120"], champion["champion"]["logloss"]],
+        ["名次共識混合", champion["challenger"]["avg520"], champion["challenger"]["recent60"], champion["challenger"]["recent120"], champion["challenger"]["logloss"]],
+    ]
+    low_rows = []
+    for prediction in reversed(history):
+        if prediction.get("status") != "settled":
+            continue
+        errors = prediction["settlement"]["avoid_errors"]["十不中"]
+        low_rows.append([
+            e(prediction["target_date"]),
+            e(prediction.get("based_on_period", "—")),
+            balls(prediction["avoid"]["十不中"], "avoid"),
+            balls(errors, "actual") if errors else "—",
+            len(errors),
+            "誤開號解除暫避" if errors else "守住",
+        ])
+
+    confidence = main_test["confidence_audit"]
+    tiers = main_test["recommendation_tiers"]
+    check_rows = [[e(name), "通過" if passed else "未通過"] for name, passed in confidence["checks"].items()]
+    action_title = "強烈推薦・最強獨支" if confidence["super_consensus"] else "本期最強獨支排序（觀察級）"
+    confidence_block = f'''
+<div class="band strong {'approved' if confidence['super_consensus'] else 'warning'}">
+  <div class="badge">{e(confidence['label'])}</div>
+  <h2>{action_title}</h2>
+  <div class="number">{int(confidence['number']):02d}</div>
+  <div class="validation-seals"><span>校準機率 {confidence['calibrated_probability'] * 100:.3f}%</span><span>公平基準 {confidence['fair_probability'] * 100:.3f}%</span><span>模型前9支持 {confidence['model_top9_support']}/{len(main_test['names'])}</span><span>加權共識 {confidence['weighted_support_pct']:.2f}%</span></div>
+  <p><b>{e(confidence['warning'])}</b></p>
+</div>'''
+
+    research = main_test["external_method_review"]
+    research_html = (
+        '<div class="band"><h2>外部預測系統方法研究</h2><h3>通過本系統驗證並採用</h3><ul>'
+        + "".join(f"<li>{e(item)}</li>" for item in research["採用"])
+        + "</ul><h3>拒絕直接採用</h3><ul>"
+        + "".join(f"<li>{e(item)}</li>" for item in research["不直接採用"])
+        + "</ul></div>"
+    )
+
+    html_text = f'''<!doctype html>
+<html lang="zh-Hant"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><meta name="theme-color" content="#7f1017"><meta name="report-version" content="{version['hash']}"><link rel="icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 64 64'%3E%3Ccircle cx='32' cy='32' r='30' fill='%23a71c23'/%3E%3Ctext x='32' y='42' text-anchor='middle' font-size='28' fill='white'%3E6%3C/text%3E%3C/svg%3E"><link rel="manifest" href="manifest.webmanifest"><link rel="stylesheet" href="style.css"><title>香港六合彩新世代鐵律戰報</title></head>
+<body><main>
+<header><h1>香港六合彩・本期戰報</h1><div>{analysis_data['history']['count']:,}期歷史基底・520期走步驗證・資料更新與模型守門雙軌分離</div>
+<div class="app-actions"><button type="button" id="manual-refresh" class="cloud-button update-button">手動更新最新</button><button type="button" id="emergency-repair" class="cloud-button repair-button">當機立即修復</button></div>
+<div class="cloud-control-note">按下手動更新後，完成時間會固定顯示並保留；當機修復會清除失效快取並重新連接雲端。</div>
+<div class="update-times"><span>雲端戰報產生：<strong id="cloud-generated-time">{e(generated_at)}</strong></span><span>最後手動更新完成：<strong id="last-manual-update">尚未手動更新</strong></span></div>
+<div id="cloud-action-status" class="cloud-action-status" role="status" aria-live="polite">目前資料：{e(analysis_data['latest_draw']['date'])}／{e(analysis_data['latest_draw']['period'])}</div></header>
+<nav aria-label="戰報分類">{''.join(f'<button type="button" data-tab="{tab}">{label}</button>' for tab, label in [('decision','本期預測'),('models','回測驗證'),('review','開獎檢討'),('monthly','歷史封存'),('verify','模型說明'),('iron','系統健康')])}</nav>
+
+<section id="decision" class="tab active">
+{confidence_block}
+<div class="band ironlaw-numbers"><h2>本期其他鐵律號碼</h2>{table(['類型','正式號碼'], [[e(name), balls(numbers)] for name, numbers in analysis_data['packs'].items()])}<h3>特別號獨立運算</h3>{table(['類型','正式號碼'], [[e(name), balls(numbers, 'specialball')] for name, numbers in analysis_data['special_packs'].items()])}<p class="note">所有號碼均依同一次正式運算產生；未達超高信心門檻時只標示觀察級，不會阻斷最新開獎資料同步。</p></div>
+<details class="report-details"><summary>查看獨支強烈驗證與完整運算</summary>
+<div class="band"><h2>多項邏輯驗證</h2>{table(['檢查項目','結果'], check_rows)}</div>
+<div class="band"><h2>清楚分層推薦</h2><div class="grid"><div class="card primary"><div class="label">A級・唯一最強排序</div><div class="number-line">{balls(tiers['A_唯一最強'])}</div></div><div class="card"><div class="label">B級・前三排序</div><div class="number-line">{balls(tiers['B_高信心前三'])}</div></div><div class="card"><div class="label">C級・核心前九</div><div class="number-line">{balls(tiers['C_核心前九'])}</div></div><div class="card"><div class="label">D級・次高防守</div><div class="number-line">{balls(tiers['D_次高防守'])}</div></div><div class="card low"><div class="label">E級・低機率暫避</div><div class="number-line">{balls(tiers['E_低機率暫避'], 'avoid')}</div></div></div></div>
+</details>
+<details class="report-details"><summary>查看資料、排名與完整牌組</summary>
+<div class="band"><h2>本期資料</h2><div class="grid"><div class="card"><div class="label">預測目標日</div><div class="value">{e(analysis_data['target_date'])}</div></div><div class="card"><div class="label">歷史資料截止日</div><div class="value">{e(analysis_data['latest_draw']['date'])}</div></div><div class="card"><div class="label">依據期別</div><div class="value">{e(analysis_data['latest_draw']['period'])}</div></div><div class="card"><div class="label">使用歷史期數</div><div class="value">{analysis_data['history']['count']:,}期</div></div><div class="card"><div class="label">戰報產生時間</div><div class="value">{e(generated_at)}</div></div></div></div>
+<div class="band"><h2>內部前18名診斷</h2><p class="note">此表為運算順位與校準值，不代表中獎保證。</p>{table(['順位','號碼','校準機率'], candidate_rows)}</div>
+<div class="band"><h2>八組結構平衡建議</h2><div class="grid">{''.join(f'<div class="card"><div class="label">第{index + 1}組</div><div class="number-line">{balls(group)}</div></div>' for index, group in enumerate(analysis_data['suggested_sets']))}</div></div>
+<div class="band warning"><h2>下期低機率暫避</h2><p class="note">只做風險排序，不代表絕對不開；與攻擊牌完全分離。</p><div class="grid">{''.join(f'<div class="card low"><div class="label">{e(name)}</div><div class="number-line">{balls(numbers, "avoid")}</div></div>' for name, numbers in analysis_data['avoid'].items())}</div></div>
+</details>
+</section>
+
+<section id="models" class="tab"><div class="band"><h2>520期前9碼時間序列走步回測</h2><div class="grid"><div class="card"><div class="label">前9碼平均命中</div><div class="value">{main_test['avg_hits']}</div><div class="note">隨機基準 {analysis_data['release_gate']['main_random_hits']}</div></div><div class="card"><div class="label">近60期至少1顆進前9</div><div class="value">{main_test['first_hit_rank_audit']['60']['within_9_rate'] * 100:.1f}%</div><div class="note">隨機基準 {main_test['within9_random_baseline'] * 100:.1f}%</div></div><div class="card"><div class="label">近120期前9碼命中</div><div class="value">{main_test['ensemble_recent_hits']['120']}</div><div class="note">超高共識門檻 ≥ {analysis_data['release_gate']['main_random_hits']}</div></div></div></div>
+<div class="band"><h2>第10名後問題專項檢測</h2>{table(['窗口','至少1顆進前9比例','首顆平均名次','完全落在9名後期數'], rank_audit_rows)}</div>
+<details class="report-details"><summary>查看逐模組錯誤檢討與滾動調整</summary><div class="band"><h2>前9碼三層滾動權重</h2><p>{e(main_test['weighting_strategy'])}</p>{table(['模型','上期前9命中','近30期','近120期','近360期','連續失誤','新權重','調整決策'], model_rows)}</div><div class="band"><h2>冠軍／挑戰者實測</h2><p>本期升級：{e(champion['promoted'])}。{e(champion['rule'])}</p>{table(['版本','520期','近60期','近120期','對數損失'], champion_rows)}</div>{research_html}</details></section>
+
+<section id="review" class="tab"><div class="band"><h2>預測對實際逐期驗算</h2><p>預測先封存，開獎後只結算，禁止回改舊牌。同一開獎日若曾在不同依據期別產生預測，會分列保存而不覆蓋。</p>{table(['目標日','依據期別','原最強獨支','獨支戰果','原主攻12碼','實際開獎','12碼命中','命中號','特別號'], settled_rows(history))}</div><details class="report-details"><summary>查看低機率號碼誤開檢討</summary><div class="band">{table(['目標日','依據期別','原十不中','誤開號','顆數','修正'], low_rows)}</div></details></section>
+
+<section id="monthly" class="tab"><div class="band"><h2>歷史封存與每月總整理</h2><p>每一筆依開獎前的「依據期別＋目標日」獨立封存；同日多次預測不合併、不回改。</p>{table(['月份','封存結算筆數','總命中','平均命中','單筆最高','特別號命中'], monthly_rows(history))}</div></section>
+
+<section id="verify" class="tab"><div class="band"><h2>模型說明</h2><p>所有模型以「前9碼命中」為訓練與扣權目標，依30／120／360期成績、校準誤差與連續失誤重新配權，再取校準機率唯一第1名。只使用開獎前已存在的歷史資料，嚴禁回填。</p><h3>失敗回饋規則</h3><ul><li>每期檢查所有實際號碼的預測名次</li><li>首顆命中落到第10名後即列入錯誤檢討</li><li>短期30期占60%，120期占25%，360期占15%</li><li>校準誤差及連續零命中會額外扣權</li><li>單一模型權重上限22%</li><li>未達信心門檻時禁止標示超高信心，改列觀察級；最新開獎資料仍必須同步</li></ul></div>{research_html}</section>
+
+<section id="iron" class="tab"><div class="band"><h2>系統健康</h2><div class="grid"><div class="card"><div class="label">資料日期／期別</div><div class="value">{e(analysis_data['latest_draw']['date'])}／{e(analysis_data['latest_draw']['period'])}</div></div><div class="card"><div class="label">預測守門</div><div class="value {gate_class}">{gate_text}</div></div><div class="card"><div class="label">雲端主更新</div><div class="value ok">每小時＋開獎後密集檢查</div></div><div class="card"><div class="label">第二層自主修復</div><div class="value ok">主流程失敗時自動啟動</div></div></div></div>
+<div class="band"><h2>最新版六合彩規則</h2><p>1至49選6個正選號碼，每注HK$10；另開1個特別號。</p>{table(['獎級','中獎條件','固定獎金'], [['一獎','6個正選','彩池制'],['二獎','5個正選＋特別號','彩池制'],['三獎','5個正選','彩池制'],['四獎','4個正選＋特別號','HK$9,600'],['五獎','4個正選','HK$640'],['六獎','3個正選＋特別號','HK$320'],['七獎','3個正選','HK$40']])}</div>
+<div class="band"><h2>鐵律守門</h2><ol><li>資料須通過期別、日期、6個正選號碼、特別號完整驗證</li><li>預測封存後不可因開獎結果修改</li><li>回測嚴格按時間順序，禁止偷看未來</li><li>主攻、低機率、上期檢討、月結分區顯示</li><li>抓號失敗保留最後有效版本，絕不以假資料覆寫</li><li>主流程失敗自動啟動第二層雲端救援，後續每小時持續重試</li><li>臨時開彩日及金多寶一律以香港賽馬會公告為準</li></ol><h3>生命週期</h3><p>開獎資料 → 雙來源交叉驗證 → 上期結算 → 失敗回饋 → 520期重測 → 健康稽核 → 戰報生成 → 手機同步 → 失敗時第二層救援</p></div></section>
+
+<div class="band warning notice">{e(analysis_data['notice'])}</div><footer>資料基準 {e(analysis_data['latest_draw']['date'])}・目標 {e(analysis_data['target_date'])}・核心 {e(analysis_data['engine'])}</footer>
+</main><script src="app.js"></script></body></html>'''
+
+    css = '''*{box-sizing:border-box}[hidden]{display:none!important}body{margin:0;background:#f3f4f6;color:#172033;font-family:system-ui,"Microsoft JhengHei",sans-serif;line-height:1.55}main{max-width:1180px;margin:auto;padding:18px}header{background:linear-gradient(135deg,#7f1017,#d1242f);color:#fff;padding:24px;border-radius:14px}h1{margin:0 0 5px;font-size:28px}h2{border-left:6px solid #c1121f;padding-left:10px;color:#7f1017;margin:0 0 16px}h3{color:#7f1017;margin:24px 0 10px}nav{display:grid;grid-template-columns:repeat(6,minmax(0,1fr));gap:8px;margin:14px 0}nav button{display:flex;align-items:center;justify-content:center;min-height:44px;background:#fff;border:1px solid #d1d5db;border-radius:9px;padding:8px;color:#7f1017;font:800 15px system-ui,"Microsoft JhengHei",sans-serif;text-align:center;cursor:pointer}nav button.on{background:#7f1017;color:#fff;border-color:#7f1017}.tab{display:none}.tab.active{display:block}.app-actions{display:flex;align-items:center;gap:9px;flex-wrap:wrap;margin-top:14px}.cloud-button{min-height:44px;border:2px solid #fff;border-radius:999px;padding:8px 18px;color:#fff;font:900 16px system-ui,"Microsoft JhengHei",sans-serif;box-shadow:0 3px 10px #0004;cursor:pointer}.cloud-button:focus-visible{outline:3px solid #fff;outline-offset:3px}.cloud-button:disabled{opacity:.62;cursor:wait}.update-button{background:#087348}.repair-button{background:#651018}.cloud-control-note{margin-top:12px;font-weight:700}.update-times{display:flex;gap:8px 20px;flex-wrap:wrap;margin-top:10px;padding:10px 12px;border-radius:10px;background:#ffffff20}.cloud-action-status{min-height:24px;margin-top:8px;font-weight:800}.cloud-action-status.ok{color:#d8ffe9}.cloud-action-status.error{color:#fff0a8}.band{background:#fff;border:1px solid #d8dee8;border-radius:12px;padding:18px;margin:14px 0;box-shadow:0 2px 8px #0000000d}.grid{display:grid;grid-template-columns:repeat(auto-fit,minmax(190px,1fr));gap:10px}.card{border:1px solid #d9dde5;border-radius:10px;padding:13px;background:#fff}.primary{border:2px solid #c1121f;background:#fff5f5}.strong{border:3px solid #b8860b;background:linear-gradient(135deg,#fff8d8,#fff);box-shadow:0 4px 18px #b8860b33}.strong.warning{border-color:#e9b949}.strong .number{font-size:64px}.badge{display:inline-block;padding:6px 12px;border-radius:999px;background:#7f1017;color:#fff;font-weight:900;margin-bottom:8px}.label{color:#687386;font-size:13px}.value{font-size:18px;font-weight:800;margin-top:4px}.number{color:#c1121f;font-size:38px;font-weight:900;letter-spacing:2px}.number-line{font-size:20px;letter-spacing:2px;color:#7f1017}.validation-seals{display:flex;gap:8px;flex-wrap:wrap;margin:12px 0}.validation-seals span{border:1px solid #d3b358;border-radius:999px;padding:5px 10px;background:#fff;font-weight:800}.table-wrap{overflow-x:auto}table{width:100%;border-collapse:collapse}th{background:#7f1017;color:#fff}th,td{padding:9px;border:1px solid #d7dce4;text-align:left;white-space:nowrap}tr:nth-child(even) td{background:#fafafa}.warning{background:#fff8e6;border-color:#e9b949}.ok{color:#176b3a}.bad{color:#9b1c1c}.note{color:#626d7d}.empty{padding:22px;text-align:center;color:#687386}.low{border-color:#596576}.ball{display:inline-grid;place-items:center;width:39px;height:39px;margin:3px;border-radius:50%;background:#a71c23;color:#fff;font-weight:900;letter-spacing:0}.actual{background:#087348}.avoid{background:#596576}.specialball,.special{background:#d08a00}.special{display:inline-block;padding:8px;color:#fff;border-radius:10px;margin-left:4px}.report-details{margin:14px 0;border:1px solid #d8dee8;border-radius:12px;background:#fff;box-shadow:0 2px 8px #0000000d}.report-details>summary{list-style:none;min-height:54px;padding:14px 18px;display:flex;align-items:center;justify-content:space-between;color:#7f1017;font-weight:900;cursor:pointer}.report-details>summary::-webkit-details-marker{display:none}.report-details>summary::after{content:"點開";padding:5px 10px;border-radius:999px;background:#7f1017;color:#fff;font-size:13px}.report-details[open]>summary::after{content:"收起"}.report-details>.band{margin:0;border-width:1px 0 0;border-radius:0;box-shadow:none}.notice{text-align:center}footer{padding:14px 4px 28px;color:#687386;font-size:13px}@media(max-width:760px){main{padding:8px}header{border-radius:8px;padding:19px}nav{grid-template-columns:repeat(3,minmax(0,1fr))}nav button{font-size:14px}.band{padding:13px}h1{font-size:24px}.number-line{font-size:18px;letter-spacing:1px}.strong .number{font-size:56px}.cloud-button{width:100%}.ball{width:35px;height:35px}th,td{font-size:14px}.update-times{display:grid}}@media(max-width:390px){nav{grid-template-columns:repeat(2,minmax(0,1fr))}}'''
+
+    js = '''document.querySelectorAll('nav button').forEach((button,index)=>{if(!index)button.classList.add('on');button.addEventListener('click',()=>{document.querySelectorAll('.tab').forEach(tab=>tab.classList.remove('active'));document.querySelectorAll('nav button').forEach(item=>item.classList.remove('on'));document.getElementById(button.dataset.tab)?.classList.add('active');button.classList.add('on');window.scrollTo({top:0,behavior:'smooth'})})});
 const pageHash=document.querySelector('meta[name="report-version"]')?.content||'';
 const refreshButton=document.getElementById('manual-refresh');
 const repairButton=document.getElementById('emergency-repair');
 const actionStatus=document.getElementById('cloud-action-status');
+const lastManualUpdate=document.getElementById('last-manual-update');
+const manualUpdateKey='marksix-last-manual-update';
 const rescueUrl='https://github.com/pingshen670822/hong-kong-marksix-ironlaw/actions/workflows/cloud-self-repair.yml';
-let reportHash=pageHash;
+function taipeiNow(){return new Intl.DateTimeFormat('zh-TW',{timeZone:'Asia/Taipei',year:'numeric',month:'2-digit',day:'2-digit',hour:'2-digit',minute:'2-digit',second:'2-digit',hour12:false}).format(new Date())}
 function setStatus(message,state=''){if(!actionStatus)return;actionStatus.textContent=message;actionStatus.className='cloud-action-status'+(state?' '+state:'')}
 function setBusy(busy){[refreshButton,repairButton].forEach(button=>{if(button)button.disabled=busy})}
-async function cloudSnapshot(){const stamp=Date.now();const [versionResponse,analysisResponse]=await Promise.all([fetch('version.json?t='+stamp,{cache:'no-store'}),fetch('latest_analysis.json?t='+stamp,{cache:'no-store'})]);if(!versionResponse.ok||!analysisResponse.ok)throw new Error('cloud-unavailable');return {version:await versionResponse.json(),analysis:await analysisResponse.json()}}
+function readManualRecord(){try{return JSON.parse(localStorage.getItem(manualUpdateKey)||'null')}catch(error){return null}}
+function renderManualRecord(record=readManualRecord()){if(!lastManualUpdate)return;if(record?.completedAt){lastManualUpdate.textContent=`${record.completedAt}（${record.date||'日期待確認'}／${record.period||'期別待確認'}）`}}
+function saveManualRecord(snapshot){const draw=snapshot.analysis?.latest_draw||{};const record={completedAt:taipeiNow(),date:draw.date||'',period:draw.period||'',hash:snapshot.version?.hash||pageHash};try{localStorage.setItem(manualUpdateKey,JSON.stringify(record))}catch(error){}renderManualRecord(record);return record}
+async function fetchJson(path){const response=await fetch(`${path}?t=${Date.now()}`,{cache:'no-store'});if(!response.ok)throw new Error(`${path}:${response.status}`);return response.json()}
+async function fetchVersion(){return fetchJson('version.json')}
+async function cloudSnapshot(){const [version,analysis]=await Promise.all([fetchVersion(),fetchJson('latest_analysis.json')]);let health=null;try{health=await fetchJson('health_status.json')}catch(error){}return {version,analysis,health}}
 function reloadWith(key,value){const url=new URL(location.href);url.searchParams.set(key,value);location.replace(url.toString())}
-async function checkVersion(){try{const snapshot=await cloudSnapshot();reportHash=snapshot.version.hash||reportHash;if(snapshot.version.hash&&snapshot.version.hash!==pageHash){reloadWith('v',snapshot.version.hash);return snapshot}return snapshot}catch(error){return null}}
-async function manualRefresh(){setBusy(true);setStatus('正在強制檢查雲端最新開獎資料…');try{const snapshot=await cloudSnapshot();reportHash=snapshot.version.hash||reportHash;if(snapshot.version.hash&&snapshot.version.hash!==pageHash){setStatus('發現新版本，正在載入…','ok');setTimeout(()=>reloadWith('v',snapshot.version.hash),250);return}const draw=snapshot.analysis.latest_draw||{};setStatus(`已是最新：${draw.date||'日期待確認'}／${draw.period||'期別待確認'}（${new Date().toLocaleTimeString('zh-TW',{hour:'2-digit',minute:'2-digit'})}檢查）`,'ok')}catch(error){setStatus('暫時無法連接雲端，請按「當機立即修復」。','error')}finally{setBusy(false)}}
-async function resetClient(){if('caches'in window){const keys=await caches.keys();await Promise.all(keys.map(key=>caches.delete(key)))}if('serviceWorker'in navigator){const registrations=await navigator.serviceWorker.getRegistrations();await Promise.all(registrations.map(registration=>registration.unregister()))}}
-async function emergencyRepair(){setBusy(true);setStatus('正在清除失效快取並重新連接雲端…');try{await resetClient();const snapshot=await cloudSnapshot();sessionStorage.setItem('marksix-repair-result',`當機修復完成；已重新連接 ${snapshot.analysis?.latest_draw?.period||'最新戰報'}。`);reloadWith('repair',String(Date.now()))}catch(error){sessionStorage.setItem('marksix-repair-result','本機快取已修復；雲端來源仍無法連線，已開啟第二層救援頁。');const rescue=window.open(rescueUrl,'_blank','noopener,noreferrer');if(!rescue)location.href=rescueUrl;else reloadWith('repair',String(Date.now()))}}
+async function checkVersion(){try{const version=await fetchVersion();if(version.hash&&version.hash!==pageHash){reloadWith('v',version.hash)}return version}catch(error){return null}}
+async function manualRefresh(){setBusy(true);setStatus('正在強制檢查雲端最新開獎資料…');try{const snapshot=await cloudSnapshot();const record=saveManualRecord(snapshot);const draw=snapshot.analysis.latest_draw||{};if(snapshot.version.hash&&snapshot.version.hash!==pageHash){setStatus(`更新完成：${record.completedAt}，發現新版，正在載入…`,'ok');setTimeout(()=>reloadWith('v',snapshot.version.hash),300);return}const healthText=snapshot.health?.healthy===false?'；健康檢測需修復':'；系統健康';setStatus(`更新完成：${record.completedAt}；最新 ${draw.date||'日期待確認'}／${draw.period||'期別待確認'}${healthText}`,'ok')}catch(error){setStatus(`更新失敗：${taipeiNow()}；暫時無法連接雲端，請按「當機立即修復」。`,'error')}finally{setBusy(false)}}
+async function resetClient(){if('caches'in window){const keys=await caches.keys();await Promise.allSettled(keys.map(key=>caches.delete(key)))}if('serviceWorker'in navigator){const registrations=await navigator.serviceWorker.getRegistrations();await Promise.allSettled(registrations.map(registration=>registration.unregister()))}}
+async function emergencyRepair(){setBusy(true);setStatus('正在清除失效快取並重新連接雲端…');try{await resetClient();const snapshot=await cloudSnapshot();const record=saveManualRecord(snapshot);sessionStorage.setItem('marksix-repair-result',`當機修復完成：${record.completedAt}；已重新連接 ${snapshot.analysis?.latest_draw?.period||'最新戰報'}。`);reloadWith('repair',String(Date.now()))}catch(error){sessionStorage.setItem('marksix-repair-result','本機快取已清除；雲端來源仍無法連線，已開啟第二層救援頁。');const rescue=window.open(rescueUrl,'_blank','noopener,noreferrer');if(!rescue)location.href=rescueUrl;else reloadWith('repair',String(Date.now()))}finally{setBusy(false)}}
 refreshButton?.addEventListener('click',manualRefresh);
 repairButton?.addEventListener('click',emergencyRepair);
+renderManualRecord();
 const repairResult=sessionStorage.getItem('marksix-repair-result');if(repairResult){sessionStorage.removeItem('marksix-repair-result');setStatus(repairResult,'ok')}
-checkVersion();setInterval(checkVersion,60000);addEventListener('pageshow',checkVersion);addEventListener('visibilitychange',()=>{if(!document.hidden)checkVersion()});if('serviceWorker'in navigator)navigator.serviceWorker.register('service-worker.js').then(registration=>registration.update());'''
-    for base in (REPORTS,SITE,DOCS):
-        atomic_write(base/"index.html",html_text); atomic_write(base/"latest_battle_report.html",html_text); atomic_write(base/"latest_analysis.json",analysis); atomic_write(base/"prediction_history.json",json.dumps(history,ensure_ascii=False,indent=2)); atomic_write(base/"version.json",json.dumps(version,ensure_ascii=False,indent=2)); atomic_write(base/"style.css",css); atomic_write(base/"app.js",js); atomic_write(base/"manifest.webmanifest",json.dumps({"name":"香港六合彩新世代鐵律戰報","short_name":"六合彩戰報","start_url":"./","display":"standalone","theme_color":"#86151b","background_color":"#fff7ea"},ensure_ascii=False)); atomic_write(base/"service-worker.js",f"const C='hk-marksix-{version['hash']}';self.addEventListener('install',e=>{{self.skipWaiting();e.waitUntil(caches.open(C).then(c=>c.addAll(['./','index.html','style.css','app.js'])));}});self.addEventListener('activate',e=>e.waitUntil(caches.keys().then(ks=>Promise.all(ks.filter(k=>k!==C).map(k=>caches.delete(k))))));self.addEventListener('fetch',e=>e.respondWith(fetch(e.request,{{cache:'no-store'}}).catch(()=>caches.match(e.request))));")
+checkVersion();setInterval(checkVersion,60000);addEventListener('pageshow',checkVersion);addEventListener('visibilitychange',()=>{if(!document.hidden)checkVersion()});if('serviceWorker'in navigator)navigator.serviceWorker.register('service-worker.js').then(registration=>registration.update()).catch(()=>setStatus('背景快取未啟用；即時雲端資料仍可使用。','error'));'''
+
+    service_worker = f'''const C='hk-marksix-{version["hash"]}';
+const ASSETS=['./','index.html','style.css','app.js'];
+self.addEventListener('install',event=>{{self.skipWaiting();event.waitUntil(caches.open(C).then(cache=>Promise.allSettled(ASSETS.map(asset=>cache.add(asset)))));}});
+self.addEventListener('activate',event=>{{event.waitUntil(Promise.all([caches.keys().then(keys=>Promise.allSettled(keys.filter(key=>key!==C).map(key=>caches.delete(key)))),self.clients.claim()]));}});
+self.addEventListener('fetch',event=>{{if(event.request.method!=='GET')return;event.respondWith(fetch(event.request,{{cache:'no-store'}}).then(response=>{{if(response.ok&&new URL(event.request.url).origin===self.location.origin){{const copy=response.clone();caches.open(C).then(cache=>cache.put(event.request,copy)).catch(()=>{{}});}}return response;}}).catch(()=>caches.match(event.request).then(cached=>cached||(event.request.mode==='navigate'?caches.match('index.html'):Response.error()))));}});'''
+
+    manifest = json.dumps({
+        "name": "香港六合彩新世代鐵律戰報",
+        "short_name": "六合彩戰報",
+        "start_url": "./",
+        "display": "standalone",
+        "theme_color": "#7f1017",
+        "background_color": "#f3f4f6",
+    }, ensure_ascii=False)
+
+    for directory in (REPORTS, SITE, DOCS):
+        atomic_write(directory / "index.html", html_text)
+        atomic_write(directory / "latest_battle_report.html", html_text)
+        atomic_write(directory / "latest_analysis.json", analysis_json)
+        atomic_write(directory / "prediction_history.json", json.dumps(history, ensure_ascii=False, indent=2))
+        atomic_write(directory / "version.json", json.dumps(version, ensure_ascii=False, indent=2))
+        atomic_write(directory / "style.css", css)
+        atomic_write(directory / "app.js", js)
+        atomic_write(directory / "manifest.webmanifest", manifest)
+        atomic_write(directory / "service-worker.js", service_worker)

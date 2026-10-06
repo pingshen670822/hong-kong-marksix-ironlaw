@@ -157,7 +157,31 @@
       "name": "mobile_manual_controls",
       "passed": true,
       "severity": "critical",
-      "detail": "manual latest-data refresh + cache reset + secure second-layer rescue entry"
+      "detail": "manual latest-data refresh + persistent completion time + cache reset + secure second-layer rescue entry"
+    },
+    {
+      "name": "interface_539_spec",
+      "passed": true,
+      "severity": "critical",
+      "detail": "six 539 categories + red header/nav + band cards + collapsible full calculations"
+    },
+    {
+      "name": "version_timezone_explicit",
+      "passed": true,
+      "severity": "critical",
+      "detail": "cloud generation time is explicit Asia/Taipei"
+    },
+    {
+      "name": "resilient_service_worker",
+      "passed": true,
+      "severity": "critical",
+      "detail": "one failed asset cannot abort service-worker installation"
+    },
+    {
+      "name": "version_poll_decoupled",
+      "passed": true,
+      "severity": "critical",
+      "detail": "background version polling does not depend on analysis fetch"
     },
     {
       "name": "dual_track_governance",
@@ -170,6 +194,12 @@
       "passed": true,
       "severity": "critical",
       "detail": "primary retry + failure diagnostics + second-layer cloud recovery + integrity audit + health check"
+    },
+    {
+      "name": "workflow_runtime_current",
+      "passed": true,
+      "severity": "critical",
+      "detail": "GitHub Actions use current Node 24 runtime actions"
     },
     {
       "name": "independent_branding",

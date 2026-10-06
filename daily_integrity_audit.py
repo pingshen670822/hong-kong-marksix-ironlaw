@@ -50,6 +50,10 @@ def main() -> int:
         if not source or actual.get("main") != list(source.main) or actual.get("special") != source.special:
             settled_ok = False
             break
+    prediction_keys = [
+        (prediction.get("based_on_period"), prediction.get("target_date"))
+        for prediction in history
+    ]
 
     add("row_count_consistent", len(raw) == len(draws) and len(raw) >= 2152, f"csv={len(raw)} parsed={len(draws)}")
     add("unique_draw_dates", len(dates) == len(set(dates)), f"duplicates={len(dates)-len(set(dates))}")
@@ -57,6 +61,7 @@ def main() -> int:
     add("chronological_order", dates == sorted(dates), f"first={dates[0]} latest={dates[-1]}")
     add("numbers_valid", valid_rows, "six unique main numbers + separate special, all 1-49")
     add("settlements_immutable_and_matched", settled_ok, f"settled={sum(p.get('status') == 'settled' for p in history)}")
+    add("unique_prediction_snapshots", len(prediction_keys) == len(set(prediction_keys)), f"duplicates={len(prediction_keys)-len(set(prediction_keys))}; identity=based_on_period+target_date")
     add("analysis_based_on_latest", analysis["latest_draw"]["date"] == dates[-1], f"analysis={analysis['latest_draw']['date']} csv={dates[-1]}")
     add("prediction_snapshot_exists", any(p.get("based_on_period") == analysis["latest_draw"]["period"] for p in history), analysis["latest_draw"]["period"])
 

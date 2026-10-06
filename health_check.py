@@ -43,12 +43,25 @@ def main() -> int:
     age = (now.date() - latest).days
     overdue = target <= now.date() and latest < target and (now.hour > 23 or (now.hour == 23 and now.minute >= 30))
     source = analysis.get("data_source_status", {})
+    cloud_dirs = [ROOT / base for base in ("reports", "site", "docs")]
+    json_paths = [path for directory in cloud_dirs for path in directory.glob("*.json")]
+    json_errors = []
+    for path in json_paths:
+        try:
+            json.loads(path.read_text(encoding="utf-8"))
+        except (OSError, UnicodeError, json.JSONDecodeError) as error:
+            json_errors.append(f"{path.relative_to(ROOT)}: {error}")
+    required_paths = [ROOT / base / name for base in ("reports", "site", "docs") for name in SYNC_FILES]
+    temp_paths = [path for directory in cloud_dirs for path in directory.glob("*.tmp")]
 
     add("latest_draw_matches_database", analysis["latest_draw"]["date"] == draws[-1].draw_date and analysis["latest_draw"]["period"] == draws[-1].period, f"{draws[-1].period} {draws[-1].draw_date}")
     add("data_recency", 0 <= age <= 10 and not overdue, f"age={age}; overdue={overdue}; target={target}")
     add("source_fetch_available", source.get("primary_rows", 0) > 0 or source.get("fallback_rows", 0) > 0, json.dumps(source, ensure_ascii=False))
     add("operational_self_test", self_test.get("operational_passed") is True, self_test.get("status"))
     add("cloud_outputs_identical", all(sha(ROOT / "reports" / f) == sha(ROOT / "site" / f) == sha(ROOT / "docs" / f) for f in SYNC_FILES), "reports/site/docs")
+    add("all_cloud_json_readable", not json_errors and bool(json_paths), "; ".join(json_errors) or f"{len(json_paths)} JSON files")
+    add("required_outputs_nonempty", all(path.exists() and path.stat().st_size > 0 for path in required_paths), f"{len(required_paths)} required files")
+    add("no_stale_atomic_files", not temp_paths, ", ".join(str(path.relative_to(ROOT)) for path in temp_paths) or "none")
 
     healthy = all(x["passed"] for x in checks)
     payload = {
