@@ -193,7 +193,7 @@
       "name": "mobile_manual_controls",
       "passed": true,
       "severity": "critical",
-      "detail": "cache purge + four-file proof + live recomputation comparison hydration + workflow status + persistent completion time + secure primary/recovery workflow entries"
+      "detail": "cache purge + four accessible cloud files + live recomputation comparison hydration + workflow status + persistent completion time + secure primary/recovery workflow entries"
     },
     {
       "name": "interface_539_spec",
