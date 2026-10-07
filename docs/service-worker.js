@@ -1,4 +1,4 @@
-const C='hk-marksix-b05c8ee18193df13';
+const C='hk-marksix-98e5041a29d4f9a7';
 const ASSETS=['./','index.html','style.css','app.js'];
 self.addEventListener('install',event=>{self.skipWaiting();event.waitUntil(caches.open(C).then(cache=>Promise.allSettled(ASSETS.map(asset=>cache.add(asset)))));});
 self.addEventListener('activate',event=>{event.waitUntil(Promise.all([caches.keys().then(keys=>Promise.allSettled(keys.filter(key=>key!==C).map(key=>caches.delete(key)))),self.clients.claim()]));});
