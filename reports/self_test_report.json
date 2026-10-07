@@ -1,6 +1,6 @@
 {
   "system": "香港六合彩新世代鐵律預測系統",
-  "generated_at": "2026-10-07",
+  "generated_at": "2026-10-08",
   "passed": true,
   "operational_passed": true,
   "prediction_gate_passed": false,
@@ -19,7 +19,7 @@
       "name": "history_latest_recent",
       "passed": true,
       "severity": "critical",
-      "detail": "26/106 2026-10-06; age=1 days"
+      "detail": "26/106 2026-10-06; age=2 days"
     },
     {
       "name": "announced_target_after_latest",
@@ -31,7 +31,7 @@
       "name": "target_not_stale",
       "passed": true,
       "severity": "critical",
-      "detail": "target=2026-10-08; today=2026-10-07"
+      "detail": "target=2026-10-08; today=2026-10-08"
     },
     {
       "name": "release_gate",
@@ -151,7 +151,7 @@
       "name": "recalculation_proof",
       "passed": true,
       "severity": "critical",
-      "detail": "{\"completed_at\": \"2026-10-07T23:00:01+08:00\", \"previous_period\": \"26/106\", \"current_period\": \"26/106\", \"current_draw_date\": \"2026-10-06\", \"data_changed\": false, \"previous_single\": 31, \"current_single\": 31, \"single_changed\": false, \"crosschecked_dates\": 100, \"status\": \"官方開獎資料未新增，已用26/106期完整重算；獨支重算後維持31，不是沿用舊頁\"}"
+      "detail": "{\"completed_at\": \"2026-10-08T03:22:27+08:00\", \"previous_period\": \"26/106\", \"current_period\": \"26/106\", \"current_draw_date\": \"2026-10-06\", \"data_changed\": false, \"previous_single\": 31, \"current_single\": 31, \"single_changed\": false, \"crosschecked_dates\": 100, \"status\": \"官方開獎資料未新增，已用26/106期完整重算；獨支重算後維持31，不是沿用舊頁\"}"
     },
     {
       "name": "consecutive_single_rationality",
