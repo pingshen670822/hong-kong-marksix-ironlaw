@@ -3,8 +3,8 @@
   "generated_at": "2026-10-07",
   "passed": true,
   "operational_passed": true,
-  "prediction_gate_passed": true,
-  "status": "健康",
+  "prediction_gate_passed": false,
+  "status": "系統正常・預測觀察級",
   "latest_period": "26/106",
   "latest_date": "2026-10-06",
   "target_date": "2026-10-08",
@@ -35,9 +35,9 @@
     },
     {
       "name": "release_gate",
-      "passed": true,
+      "passed": false,
       "severity": "advisory",
-      "detail": "{\"passed\": true, \"publish_mode\": \"超高共識推薦\", \"rule\": \"預測信心守門與開獎資料同步分離；未達門檻只降級標示，絕不可阻斷最新資料更新\", \"main_edge\": 3.784e-05, \"special_edge\": 2.156e-05, \"main_avg_hits\": 1.1385, \"main_random_hits\": 1.102, \"special_avg_hits\": 0.0808, \"special_random_hits\": 0.0612, \"max_main_weight\": 0.16358499}"
+      "detail": "{\"passed\": false, \"publish_mode\": \"觀察級・實戰樣本累積中\", \"rule\": \"預測信心守門與開獎資料同步分離；未達門檻只降級標示，絕不可阻斷最新資料更新\", \"main_edge\": 3.784e-05, \"special_edge\": 2.156e-05, \"main_avg_hits\": 1.1385, \"main_random_hits\": 1.102, \"special_avg_hits\": 0.0808, \"special_random_hits\": 0.0612, \"max_main_weight\": 0.16358499, \"model_passed\": true, \"live_single_passed\": false}"
     },
     {
       "name": "walk_forward_520",
@@ -121,7 +121,19 @@
       "name": "strongest_multi_logic_audit",
       "passed": true,
       "severity": "critical",
-      "detail": "{\"number\": 31, \"label\": \"超高共識・本期唯一最強推薦\", \"super_consensus\": true, \"calibrated_probability\": 0.132762, \"fair_probability\": 0.122449, \"relative_lift_pct\": 8.42, \"score_gap_to_second\": 0.00268388, \"model_top9_support\": 9, \"model_top3_support\": 6, \"weighted_support_pct\": 84.84, \"checks\": {\"發布守門通過\": true, \"校準機率高於公平基準\": true, \"至少7個模型列入前9\": true, \"加權模型共識至少65%\": true, \"近60期前9覆蓋優於隨機\": true, \"近120期平均命中優於隨機\": true, \"第一名分數嚴格高於第二名\": true}, \"warning\": \"超高共識代表多項模型邏輯一致，不代表必中；六合彩單號公平基準仍約12.24%。未通過守門時只列觀察排序，不得冒充高信心推薦。\"}"
+      "detail": "{\"number\": 31, \"label\": \"模型排序第1・實戰樣本累積中\", \"super_consensus\": false, \"calibrated_probability\": 0.132762, \"fair_probability\": 0.122449, \"relative_lift_pct\": 8.42, \"score_gap_to_second\": 0.00268388, \"model_top9_support\": 9, \"model_top3_support\": 6, \"weighted_support_pct\": 84.84, \"checks\": {\"發布守門通過\": true, \"校準機率高於公平基準\": true, \"至少7個模型列入前9\": true, \"加權模型共識至少65%\": true, \"近60期前9覆蓋優於隨機\": true, \"近120期平均命中優於隨機\": true, \"第一名分數嚴格高於第二名\": true, \"封存實戰至少30個獨立開獎日\": false}, \"warning\": \"目前只有15個獨立封存開獎日（6中，40.0%）；未達30期實戰門檻，因此保留最強排序，但禁止標示超高信心或必中。\", \"model_super_consensus\": true}"
+    },
+    {
+      "name": "live_single_accuracy_audit",
+      "passed": true,
+      "severity": "critical",
+      "detail": "{\"method\": \"每個目標開獎日只計一次；同日多個封存版本採開獎前最近版本\", \"settled_snapshots\": 16, \"independent_draws\": 15, \"duplicate_snapshots_excluded\": 1, \"hits\": 6, \"hit_rate\": 0.4, \"fair_single_rate\": 0.122449, \"recent_5\": {\"draws\": 5, \"hits\": 2, \"hit_rate\": 0.4}, \"recent_10\": {\"draws\": 10, \"hits\": 4, \"hit_rate\": 0.4}, \"longest_miss_streak\": 2, \"latest_result\": {\"target_date\": \"2026-10-06\", \"based_on_period\": \"26/105\", \"number\": 31, \"hit\": true}, \"current_number\": 31, \"current_number_samples\": 1, \"current_number_hits\": 1, \"minimum_independent_samples\": 30, \"live_gate_passed\": false, \"outcomes\": [{\"target_date\": \"2026-07-16\", \"based_on_period\": \"26/076\", \"number\": 7, \"hit\": false}, {\"target_date\": \"2026-07-23\", \"based_on_period\": \"26/078\", \"number\": 37, \"hit\": false}, {\"target_date\": \"2026-07-25\", \"based_on_period\": \"26/079\", \"number\": 7, \"hit\": true}, {\"target_date\": \"2026-07-28\", \"based_on_period\": \"26/080\", \"number\": 7, \"hit\": true}, {\"target_date\": \"2026-07-30\", \"based_on_period\": \"26/081\", \"number\": 7, \"hit\": false}, {\"target_date\": \"2026-08-01\", \"based_on_period\": \"26/082\", \"number\": 7, \"hit\": true}, {\"target_date\": \"2026-08-04\", \"based_on_period\": \"26/083\", \"number\": 7, \"hit\": false}, {\"target_date\": \"2026-08-06\", \"based_on_period\": \"26/084\", \"number\": 7, \"hit\": false}, {\"target_date\": \"2026-08-22\", \"based_on_period\": \"26/091\", \"number\": 7, \"hit\": true}, {\"target_date\": \"2026-08-25\", \"based_on_period\": \"26/092\", \"number\": 7, \"hit\": false}, {\"target_date\": \"2026-08-27\", \"based_on_period\": \"26/093\", \"number\": 7, \"hit\": false}, {\"target_date\": \"2026-08-29\", \"based_on_period\": \"26/094\", \"number\": 7, \"hit\": true}, {\"target_date\": \"2026-09-05\", \"based_on_period\": \"26/095\", \"number\": 7, \"hit\": false}, {\"target_date\": \"2026-09-10\", \"based_on_period\": \"26/097\", \"number\": 7, \"hit\": false}, {\"target_date\": \"2026-10-06\", \"based_on_period\": \"26/105\", \"number\": 31, \"hit\": true}]}"
+    },
+    {
+      "name": "no_overconfident_single_label",
+      "passed": true,
+      "severity": "critical",
+      "detail": "independent=15; label=模型排序第1・實戰樣本累積中"
     },
     {
       "name": "recommendation_tiers_clear",
@@ -157,7 +169,7 @@
       "name": "mobile_manual_controls",
       "passed": true,
       "severity": "critical",
-      "detail": "manual latest-data refresh + persistent completion time + cache reset + secure second-layer rescue entry"
+      "detail": "cache purge + four-file proof + workflow status + persistent completion time + secure primary/recovery workflow entries"
     },
     {
       "name": "interface_539_spec",

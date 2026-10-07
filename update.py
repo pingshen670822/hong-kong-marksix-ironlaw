@@ -1,8 +1,11 @@
 from __future__ import annotations
-import csv,json,re,urllib.parse,urllib.request
+import csv,json,re,sys,urllib.parse,urllib.request
 from datetime import date as _date,datetime,timedelta,timezone
 from engine import ROOT,load_draws,analyze
 from report import build_reports
+
+if hasattr(sys.stdout,"reconfigure"):
+    sys.stdout.reconfigure(encoding="utf-8")
 
 API="https://www.mark6six.com/api/draws.php"
 NEXT_DRAW_URL="https://mark6.app/live"
@@ -105,6 +108,80 @@ def settle_and_save(result: dict):
     HISTORY_PATH.write_text(json.dumps(history,ensure_ascii=False,indent=2),encoding="utf-8")
     return history
 
+def apply_live_single_audit(result: dict, history: list[dict]) -> dict:
+    """以每個實際開獎日一筆的封存預測，審核最強獨支的實戰可信度。"""
+    # 同一目標日可能因臨時改期留下多個封存版本；準確率只能計一次，採開獎前
+    # 最接近目標日的版本，避免用重複快照膨脹樣本數。
+    by_target={}
+    settled_snapshots=0
+    for prediction in history:
+        if prediction.get("status")!="settled":
+            continue
+        settled_snapshots+=1
+        target=prediction.get("target_date","")
+        key=(prediction.get("based_on_date", ""),prediction.get("based_on_period", ""))
+        current=by_target.get(target)
+        if current is None or key>(current.get("based_on_date", ""),current.get("based_on_period", "")):
+            by_target[target]=prediction
+    outcomes=[]
+    for target,prediction in sorted(by_target.items()):
+        strongest=int(prediction["packs"]["最強單支"][0])
+        hit=strongest in set(map(int,prediction["actual"]["main"]))
+        outcomes.append({"target_date":target,"based_on_period":prediction.get("based_on_period",""),"number":strongest,"hit":hit})
+    hit_count=sum(item["hit"] for item in outcomes)
+    total=len(outcomes)
+    recent5=outcomes[-5:]
+    recent10=outcomes[-10:]
+    longest_miss=0
+    miss_streak=0
+    for item in outcomes:
+        miss_streak=0 if item["hit"] else miss_streak+1
+        longest_miss=max(longest_miss,miss_streak)
+    current_number=int(result["packs"]["最強單支"][0])
+    current_samples=[item for item in outcomes if item["number"]==current_number]
+    fair=6/49
+    minimum_samples=30
+    overall_rate=hit_count/total if total else 0.0
+    recent10_rate=sum(item["hit"] for item in recent10)/len(recent10) if recent10 else 0.0
+    live_passed=total>=minimum_samples and overall_rate>=fair and len(recent10)>=10 and recent10_rate>=fair
+    audit={
+        "method":"每個目標開獎日只計一次；同日多個封存版本採開獎前最近版本",
+        "settled_snapshots":settled_snapshots,
+        "independent_draws":total,
+        "duplicate_snapshots_excluded":settled_snapshots-total,
+        "hits":hit_count,
+        "hit_rate":round(overall_rate,6),
+        "fair_single_rate":round(fair,6),
+        "recent_5":{"draws":len(recent5),"hits":sum(item["hit"] for item in recent5),"hit_rate":round(sum(item["hit"] for item in recent5)/len(recent5),6) if recent5 else 0.0},
+        "recent_10":{"draws":len(recent10),"hits":sum(item["hit"] for item in recent10),"hit_rate":round(recent10_rate,6)},
+        "longest_miss_streak":longest_miss,
+        "latest_result":outcomes[-1] if outcomes else None,
+        "current_number":current_number,
+        "current_number_samples":len(current_samples),
+        "current_number_hits":sum(item["hit"] for item in current_samples),
+        "minimum_independent_samples":minimum_samples,
+        "live_gate_passed":live_passed,
+        "outcomes":outcomes,
+    }
+    result["live_single_audit"]=audit
+    release=result["release_gate"]
+    model_passed=bool(release.get("passed"))
+    release["model_passed"]=model_passed
+    release["live_single_passed"]=live_passed
+    release["passed"]=model_passed and live_passed
+    release["publish_mode"]="超高共識推薦" if release["passed"] else "觀察級・實戰樣本累積中"
+    confidence=result["backtest"]["main"]["confidence_audit"]
+    model_consensus=bool(confidence.get("super_consensus"))
+    confidence["model_super_consensus"]=model_consensus
+    confidence["checks"][f"封存實戰至少{minimum_samples}個獨立開獎日"]=live_passed
+    confidence["super_consensus"]=model_consensus and live_passed
+    confidence["label"]="超高共識・本期唯一最強推薦" if confidence["super_consensus"] else "模型排序第1・實戰樣本累積中"
+    confidence["warning"]=(
+        f"目前只有{total}個獨立封存開獎日（{hit_count}中，{overall_rate*100:.1f}%）；"
+        f"未達{minimum_samples}期實戰門檻，因此保留最強排序，但禁止標示超高信心或必中。"
+    )
+    return audit
+
 def main():
     previous_target=None
     previous_report=ROOT/"reports"/"latest_analysis.json"
@@ -141,6 +218,6 @@ def main():
         result["update_status"]="最新開獎資料已同步；下期日期來源暫時降級並持續覆核"
     else:
         result["update_status"]="最新資料已完成抓取、結算、重算與手機同步"
-    history=settle_and_save(result); build_reports(result,history)
+    history=settle_and_save(result); apply_live_single_audit(result,history); build_reports(result,history)
     print(json.dumps({"data":source_status,"latest":result["latest_draw"],"target":result["target_date"],"target_source":target_source,"gate":result["release_gate"]},ensure_ascii=False,indent=2))
 if __name__=="__main__": main()

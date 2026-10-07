@@ -3633,7 +3633,7 @@
           "first_hit_rank": 12,
           "within_9": false,
           "brier": 0.10750430151247758,
-          "logloss": 0.3720005309807423
+          "logloss": 0.3720005309807422
         },
         {
           "period": "24/026",
@@ -4551,7 +4551,7 @@
           "first_hit_rank": 5,
           "within_9": true,
           "brier": 0.10743189770957705,
-          "logloss": 0.3716742390077778
+          "logloss": 0.3716742390077777
         },
         {
           "period": "24/080",
@@ -6812,7 +6812,7 @@
           "first_hit_rank": 10,
           "within_9": false,
           "brier": 0.10748967407879445,
-          "logloss": 0.37193646316709655
+          "logloss": 0.3719364631670965
         },
         {
           "period": "25/073",
@@ -7780,7 +7780,7 @@
           ],
           "first_hit_rank": 3,
           "within_9": true,
-          "brier": 0.10722337201122704,
+          "brier": 0.10722337201122707,
           "logloss": 0.3707029514561114
         },
         {
@@ -8970,7 +8970,7 @@
           ],
           "first_hit_rank": 3,
           "within_9": true,
-          "brier": 0.1072419663994698,
+          "brier": 0.10724196639946981,
           "logloss": 0.37079420317505724
         },
         {
@@ -9294,7 +9294,7 @@
           "first_hit_rank": 9,
           "within_9": true,
           "brier": 0.10762517115929315,
-          "logloss": 0.37254690565357534
+          "logloss": 0.37254690565357546
         },
         {
           "period": "26/085",
@@ -10011,8 +10011,8 @@
       },
       "confidence_audit": {
         "number": 31,
-        "label": "超高共識・本期唯一最強推薦",
-        "super_consensus": true,
+        "label": "模型排序第1・實戰樣本累積中",
+        "super_consensus": false,
         "calibrated_probability": 0.132762,
         "fair_probability": 0.122449,
         "relative_lift_pct": 8.42,
@@ -10027,9 +10027,11 @@
           "加權模型共識至少65%": true,
           "近60期前9覆蓋優於隨機": true,
           "近120期平均命中優於隨機": true,
-          "第一名分數嚴格高於第二名": true
+          "第一名分數嚴格高於第二名": true,
+          "封存實戰至少30個獨立開獎日": false
         },
-        "warning": "超高共識代表多項模型邏輯一致，不代表必中；六合彩單號公平基準仍約12.24%。未通過守門時只列觀察排序，不得冒充高信心推薦。"
+        "warning": "目前只有15個獨立封存開獎日（6中，40.0%）；未達30期實戰門檻，因此保留最強排序，但禁止標示超高信心或必中。",
+        "model_super_consensus": true
       },
       "recommendation_tiers": {
         "A_唯一最強": [
@@ -10747,7 +10749,7 @@
           "first_hit_rank": 11,
           "within_9": false,
           "brier": 0.019962911702488376,
-          "logloss": 0.09887641053357855
+          "logloss": 0.09887641053357857
         },
         {
           "period": "23/054",
@@ -13291,7 +13293,7 @@
           "first_hit_rank": 19,
           "within_9": false,
           "brier": 0.019984767624860487,
-          "logloss": 0.09941796469827657
+          "logloss": 0.09941796469827659
         },
         {
           "period": "24/120",
@@ -13327,7 +13329,7 @@
           "first_hit_rank": 44,
           "within_9": false,
           "brier": 0.020049525685689816,
-          "logloss": 0.10108578146368928
+          "logloss": 0.10108578146368927
         },
         {
           "period": "24/123",
@@ -16429,8 +16431,8 @@
     }
   },
   "release_gate": {
-    "passed": true,
-    "publish_mode": "超高共識推薦",
+    "passed": false,
+    "publish_mode": "觀察級・實戰樣本累積中",
     "rule": "預測信心守門與開獎資料同步分離；未達門檻只降級標示，絕不可阻斷最新資料更新",
     "main_edge": 3.784e-05,
     "special_edge": 2.156e-05,
@@ -16438,7 +16440,9 @@
     "main_random_hits": 1.102,
     "special_avg_hits": 0.0808,
     "special_random_hits": 0.0612,
-    "max_main_weight": 0.16358499
+    "max_main_weight": 0.16358499,
+    "model_passed": true,
+    "live_single_passed": false
   },
   "operational_policy": {
     "data_sync_independent": true,
@@ -16455,5 +16459,128 @@
     "source_errors": [],
     "schedule_error": null
   },
-  "update_status": "最新資料已完成抓取、結算、重算與手機同步"
+  "update_status": "最新資料已完成抓取、結算、重算與手機同步",
+  "live_single_audit": {
+    "method": "每個目標開獎日只計一次；同日多個封存版本採開獎前最近版本",
+    "settled_snapshots": 16,
+    "independent_draws": 15,
+    "duplicate_snapshots_excluded": 1,
+    "hits": 6,
+    "hit_rate": 0.4,
+    "fair_single_rate": 0.122449,
+    "recent_5": {
+      "draws": 5,
+      "hits": 2,
+      "hit_rate": 0.4
+    },
+    "recent_10": {
+      "draws": 10,
+      "hits": 4,
+      "hit_rate": 0.4
+    },
+    "longest_miss_streak": 2,
+    "latest_result": {
+      "target_date": "2026-10-06",
+      "based_on_period": "26/105",
+      "number": 31,
+      "hit": true
+    },
+    "current_number": 31,
+    "current_number_samples": 1,
+    "current_number_hits": 1,
+    "minimum_independent_samples": 30,
+    "live_gate_passed": false,
+    "outcomes": [
+      {
+        "target_date": "2026-07-16",
+        "based_on_period": "26/076",
+        "number": 7,
+        "hit": false
+      },
+      {
+        "target_date": "2026-07-23",
+        "based_on_period": "26/078",
+        "number": 37,
+        "hit": false
+      },
+      {
+        "target_date": "2026-07-25",
+        "based_on_period": "26/079",
+        "number": 7,
+        "hit": true
+      },
+      {
+        "target_date": "2026-07-28",
+        "based_on_period": "26/080",
+        "number": 7,
+        "hit": true
+      },
+      {
+        "target_date": "2026-07-30",
+        "based_on_period": "26/081",
+        "number": 7,
+        "hit": false
+      },
+      {
+        "target_date": "2026-08-01",
+        "based_on_period": "26/082",
+        "number": 7,
+        "hit": true
+      },
+      {
+        "target_date": "2026-08-04",
+        "based_on_period": "26/083",
+        "number": 7,
+        "hit": false
+      },
+      {
+        "target_date": "2026-08-06",
+        "based_on_period": "26/084",
+        "number": 7,
+        "hit": false
+      },
+      {
+        "target_date": "2026-08-22",
+        "based_on_period": "26/091",
+        "number": 7,
+        "hit": true
+      },
+      {
+        "target_date": "2026-08-25",
+        "based_on_period": "26/092",
+        "number": 7,
+        "hit": false
+      },
+      {
+        "target_date": "2026-08-27",
+        "based_on_period": "26/093",
+        "number": 7,
+        "hit": false
+      },
+      {
+        "target_date": "2026-08-29",
+        "based_on_period": "26/094",
+        "number": 7,
+        "hit": true
+      },
+      {
+        "target_date": "2026-09-05",
+        "based_on_period": "26/095",
+        "number": 7,
+        "hit": false
+      },
+      {
+        "target_date": "2026-09-10",
+        "based_on_period": "26/097",
+        "number": 7,
+        "hit": false
+      },
+      {
+        "target_date": "2026-10-06",
+        "based_on_period": "26/105",
+        "number": 31,
+        "hit": true
+      }
+    ]
+  }
 }

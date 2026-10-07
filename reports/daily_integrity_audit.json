@@ -1,10 +1,10 @@
 {
   "system": "香港六合彩新世代鐵律預測系統",
-  "checked_at": "2026-10-07T05:29:13+08:00",
+  "checked_at": "2026-10-07T08:59:49+08:00",
   "passed": true,
   "latest_period": "26/106",
   "latest_date": "2026-10-06",
-  "prediction_gate_passed": true,
+  "prediction_gate_passed": false,
   "checks": [
     {
       "name": "row_count_consistent",

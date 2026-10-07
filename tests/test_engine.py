@@ -1,7 +1,7 @@
 import unittest,sys
 from pathlib import Path
 sys.path.insert(0,str(Path(__file__).resolve().parents[1]))
-import engine
+import engine,update
 
 class EngineTest(unittest.TestCase):
     @classmethod
@@ -27,4 +27,16 @@ class EngineTest(unittest.TestCase):
         sets=engine.build_sets(np.linspace(.05,.2,49))
         self.assertEqual(len(sets),8)
         self.assertTrue(all(len(set(x))==6 for x in sets))
+    def test_live_single_audit_deduplicates_target_draw(self):
+        result={"packs":{"最強單支":[31]},"release_gate":{"passed":True},"backtest":{"main":{"confidence_audit":{"super_consensus":True,"checks":{}}}}}
+        def settled(based_on,number,actual):
+            return {"status":"settled","target_date":"2026-08-22","based_on_date":based_on,"based_on_period":based_on,"packs":{"最強單支":[number]},"actual":{"main":actual}}
+        history=[settled("2026-08-18",7,[7,8,9,10,11,12]),settled("2026-08-20",31,[31,32,33,34,35,36])]
+        audit=update.apply_live_single_audit(result,history)
+        self.assertEqual(audit["settled_snapshots"],2)
+        self.assertEqual(audit["independent_draws"],1)
+        self.assertEqual(audit["duplicate_snapshots_excluded"],1)
+        self.assertEqual(audit["hits"],1)
+        self.assertFalse(result["release_gate"]["passed"])
+        self.assertFalse(result["backtest"]["main"]["confidence_audit"]["super_consensus"])
 if __name__=="__main__": unittest.main()
