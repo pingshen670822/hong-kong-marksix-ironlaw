@@ -10028,7 +10028,8 @@
           "近60期前9覆蓋優於隨機": true,
           "近120期平均命中優於隨機": true,
           "第一名分數嚴格高於第二名": true,
-          "封存實戰至少30個獨立開獎日": false
+          "封存實戰至少30個獨立開獎日": false,
+          "連莊合理性驗證": true
         },
         "warning": "目前只有15個獨立封存開獎日（6中，40.0%）；未達30期實戰門檻，因此保留最強排序，但禁止標示超高信心或必中。",
         "model_super_consensus": true
@@ -16461,7 +16462,7 @@
   },
   "update_status": "最新資料已完成抓取、結算、重算與手機同步",
   "recalculation_proof": {
-    "completed_at": "2026-10-07T09:17:36+08:00",
+    "completed_at": "2026-10-07T09:22:31+08:00",
     "previous_period": "26/106",
     "current_period": "26/106",
     "current_draw_date": "2026-10-06",
@@ -16594,5 +16595,32 @@
         "hit": true
       }
     ]
+  },
+  "consecutive_single_audit": {
+    "is_consecutive": true,
+    "number": 31,
+    "streak": 2,
+    "basis_periods": [
+      "26/105",
+      "26/106"
+    ],
+    "previous_basis_period": "26/105",
+    "current_basis_period": "26/106",
+    "previous_result_hit": true,
+    "model_top9_support": 9,
+    "model_count": 11,
+    "weighted_support_pct": 84.84,
+    "score_gap_to_second": 0.00268388,
+    "checks": {
+      "跨不同依據期別重新運算": true,
+      "最新開獎資料已納入": true,
+      "第一名嚴格高於第二名": true,
+      "至少7個模型列入前9": true,
+      "加權模型共識至少65%": true,
+      "原始模型發布守門通過": true
+    },
+    "reasonable_repeat_passed": true,
+    "strong_recommendation_passed": false,
+    "status": "31連續2個不同依據期別排名第1；前次26/105封存戰果為命中，最新26/106資料納入後仍為唯一第1，模型前9支持9/11、加權共識84.84%。連莊模型依據通過；實戰樣本守門未通過，故仍為觀察級。"
   }
 }

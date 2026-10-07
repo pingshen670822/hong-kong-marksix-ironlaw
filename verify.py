@@ -52,6 +52,9 @@ def main():
     add("no_overconfident_single_label",not insufficient or (not confidence.get("super_consensus") and "樣本累積中" in confidence.get("label","")),f"independent={live.get('independent_draws')}; label={confidence.get('label')}")
     proof=analysis.get("recalculation_proof",{})
     add("recalculation_proof",proof.get("current_period")==analysis["latest_draw"]["period"] and proof.get("current_single")==analysis["packs"]["最強單支"][0] and bool(proof.get("completed_at")) and isinstance(proof.get("data_changed"),bool) and isinstance(proof.get("single_changed"),bool),json.dumps(proof,ensure_ascii=False))
+    repeat=analysis.get("consecutive_single_audit",{})
+    repeat_required=repeat.get("is_consecutive") is True
+    add("consecutive_single_rationality",repeat.get("number")==analysis["packs"]["最強單支"][0] and isinstance(repeat.get("reasonable_repeat_passed"),bool) and len(repeat.get("checks",{}))>=6 and (not repeat_required or repeat.get("reasonable_repeat_passed") is True),json.dumps(repeat,ensure_ascii=False))
     add("recommendation_tiers_clear",set(analysis["backtest"]["main"].get("recommendation_tiers",{}))=={"A_唯一最強","B_高信心前三","C_核心前九","D_次高防守","E_低機率暫避"},"A-E tiers")
     add("suggested_sets",len(analysis["suggested_sets"])==8 and all(len(set(x))==6 for x in analysis["suggested_sets"]),"8 valid sets")
     required=["index.html","latest_battle_report.html","latest_analysis.json","prediction_history.json","version.json","style.css","app.js","service-worker.js","manifest.webmanifest"]
@@ -67,6 +70,7 @@ def main():
     css=(ROOT/"site/style.css").read_text(encoding="utf-8")
     service_worker=(ROOT/"site/service-worker.js").read_text(encoding="utf-8")
     add("interface_539_spec",all(label in page for label in navigation) and 'class="band strong' in page and 'class="report-details"' in page and all(marker in css for marker in ("#f3f4f6","#7f1017","repeat(6,minmax(0,1fr))",".report-details")),"six 539 categories + red header/nav + band cards + collapsible full calculations")
+    add("next_draw_prediction_first",all(x in page for x in ("下期正式預測",f"目標開獎日：{analysis['target_date']}","下期前三排序","下期核心前九","下期主攻12碼","連莊合理性驗證","跨不同依據期別重新運算")) and page.index("下期正式預測")<page.index("更新與重算證據") and page.index("下期正式預測")<page.index("終極獨支・封存實戰準確度"),"next target, basis, main packs and repeat-number rationale are the first prediction block")
     add("version_timezone_explicit",version.get("timezone")=="Asia/Taipei" and "+08:00" in version.get("updated_at","") and "雲端戰報產生" in page,"cloud generation time is explicit Asia/Taipei")
     add("resilient_service_worker","Promise.allSettled" in service_worker and ".addAll(" not in service_worker and "request.method!=='GET'" in service_worker,"one failed asset cannot abort service-worker installation")
     add("version_poll_decoupled","async function fetchVersion" in app and "async function checkVersion(){try{const version=await fetchVersion()" in app,"background version polling does not depend on analysis fetch")

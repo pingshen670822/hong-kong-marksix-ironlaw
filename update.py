@@ -182,6 +182,83 @@ def apply_live_single_audit(result: dict, history: list[dict]) -> dict:
     )
     return audit
 
+def apply_consecutive_single_audit(result: dict, history: list[dict]) -> dict:
+    """驗證最強獨支跨期連莊是否有新資料與模型依據，禁止用追號或複製舊牌冒充。"""
+    by_basis={}
+    for prediction in history:
+        basis=prediction.get("based_on_period")
+        if not basis or not prediction.get("packs",{}).get("最強單支"):
+            continue
+        current=by_basis.get(basis)
+        if current is None or prediction.get("target_date","")>current.get("target_date",""):
+            by_basis[basis]=prediction
+    snapshots=sorted(by_basis.values(),key=lambda item:(item.get("based_on_date",""),item.get("based_on_period","")))
+    current_period=result["latest_draw"]["period"]
+    eligible=[item for item in snapshots if (item.get("based_on_date",""),item.get("based_on_period","")) <= (result["latest_draw"]["date"],current_period)]
+    if not eligible or eligible[-1].get("based_on_period")!=current_period:
+        eligible.append({"based_on_period":current_period,"based_on_date":result["latest_draw"]["date"],"target_date":result["target_date"],"status":"pending","packs":{"最強單支":result["packs"]["最強單支"]}})
+    current=eligible[-1]
+    current_number=int(current["packs"]["最強單支"][0])
+    streak=0
+    streak_periods=[]
+    for item in reversed(eligible):
+        if int(item["packs"]["最強單支"][0])!=current_number:
+            break
+        streak+=1
+        streak_periods.append(item.get("based_on_period",""))
+    streak_periods.reverse()
+    previous=eligible[-2] if len(eligible)>=2 else None
+    previous_number=int(previous["packs"]["最強單支"][0]) if previous else None
+    previous_hit=None
+    if previous and previous.get("status")=="settled" and previous.get("actual"):
+        previous_hit=previous_number in set(map(int,previous["actual"]["main"]))
+    confidence=result["backtest"]["main"]["confidence_audit"]
+    model_count=len(result["backtest"]["main"]["names"])
+    is_repeat=streak>=2
+    checks={
+        "跨不同依據期別重新運算":bool(previous and previous.get("based_on_period")!=current_period and previous.get("based_on_date","")<result["latest_draw"]["date"]),
+        "最新開獎資料已納入":current.get("based_on_period")==current_period and current.get("based_on_date")==result["latest_draw"]["date"],
+        "第一名嚴格高於第二名":confidence.get("score_gap_to_second",0)>0,
+        "至少7個模型列入前9":confidence.get("model_top9_support",0)>=7,
+        "加權模型共識至少65%":confidence.get("weighted_support_pct",0)>=65,
+        "原始模型發布守門通過":bool(result["release_gate"].get("model_passed",result["release_gate"].get("passed"))),
+    }
+    reasonable=all(checks.values()) if is_repeat else True
+    audit={
+        "is_consecutive":is_repeat,
+        "number":current_number,
+        "streak":streak,
+        "basis_periods":streak_periods,
+        "previous_basis_period":previous.get("based_on_period") if previous else None,
+        "current_basis_period":current_period,
+        "previous_result_hit":previous_hit,
+        "model_top9_support":confidence.get("model_top9_support",0),
+        "model_count":model_count,
+        "weighted_support_pct":confidence.get("weighted_support_pct",0),
+        "score_gap_to_second":confidence.get("score_gap_to_second",0),
+        "checks":checks,
+        "reasonable_repeat_passed":reasonable,
+        "strong_recommendation_passed":reasonable and bool(result["release_gate"].get("live_single_passed")),
+    }
+    if is_repeat:
+        prior_text="命中" if previous_hit is True else ("未中" if previous_hit is False else "尚未結算")
+        audit["status"]=(
+            f"{current_number:02d}連續{streak}個不同依據期別排名第1；前次{previous.get('based_on_period')}封存戰果為{prior_text}，"
+            f"最新{current_period}資料納入後仍為唯一第1，模型前9支持{confidence.get('model_top9_support',0)}/{model_count}、"
+            f"加權共識{confidence.get('weighted_support_pct',0):.2f}%。連莊模型依據{'通過' if reasonable else '未通過'}；"
+            f"實戰樣本守門{'通過' if result['release_gate'].get('live_single_passed') else '未通過，故仍為觀察級'}。"
+        )
+    else:
+        audit["status"]=f"{current_number:02d}本期不是連莊，無須啟動連莊守門。"
+    result["consecutive_single_audit"]=audit
+    confidence["checks"]["連莊合理性驗證"]=reasonable
+    if is_repeat and not reasonable:
+        confidence["super_consensus"]=False
+        confidence["label"]="連莊驗證未通過・僅保留排序"
+        result["release_gate"]["passed"]=False
+        result["release_gate"]["publish_mode"]="觀察級・連莊驗證未通過"
+    return audit
+
 def main():
     previous_target=None
     previous_analysis={}
@@ -240,6 +317,6 @@ def main():
         "crosschecked_dates":source_status["crosschecked_dates"],
         "status":("已加入新開獎資料並完整重算" if data_changed else f"官方開獎資料未新增，已用{result['latest_draw']['period']}期完整重算；獨支重算後維持{current_single:02d}，不是沿用舊頁"),
     }
-    history=settle_and_save(result); apply_live_single_audit(result,history); build_reports(result,history)
+    history=settle_and_save(result); apply_live_single_audit(result,history); apply_consecutive_single_audit(result,history); build_reports(result,history)
     print(json.dumps({"data":source_status,"latest":result["latest_draw"],"target":result["target_date"],"target_source":target_source,"gate":result["release_gate"]},ensure_ascii=False,indent=2))
 if __name__=="__main__": main()

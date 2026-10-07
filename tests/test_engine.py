@@ -39,4 +39,17 @@ class EngineTest(unittest.TestCase):
         self.assertEqual(audit["hits"],1)
         self.assertFalse(result["release_gate"]["passed"])
         self.assertFalse(result["backtest"]["main"]["confidence_audit"]["super_consensus"])
+    def test_consecutive_single_requires_cross_period_model_support(self):
+        confidence={"super_consensus":False,"checks":{},"score_gap_to_second":.01,"model_top9_support":8,"weighted_support_pct":72.0}
+        result={"latest_draw":{"period":"26/106","date":"2026-10-06"},"target_date":"2026-10-08","packs":{"最強單支":[31]},"release_gate":{"passed":False,"model_passed":True,"live_single_passed":False},"backtest":{"main":{"names":[str(x) for x in range(9)],"confidence_audit":confidence}}}
+        history=[
+            {"status":"settled","based_on_period":"26/105","based_on_date":"2026-10-03","target_date":"2026-10-06","packs":{"最強單支":[31]},"actual":{"main":[9,29,31,34,36,41]}},
+            {"status":"pending","based_on_period":"26/106","based_on_date":"2026-10-06","target_date":"2026-10-08","packs":{"最強單支":[31]}},
+        ]
+        audit=update.apply_consecutive_single_audit(result,history)
+        self.assertTrue(audit["is_consecutive"])
+        self.assertEqual(audit["streak"],2)
+        self.assertTrue(audit["reasonable_repeat_passed"])
+        self.assertFalse(audit["strong_recommendation_passed"])
+        self.assertTrue(audit["previous_result_hit"])
 if __name__=="__main__": unittest.main()
