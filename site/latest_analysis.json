@@ -18819,7 +18819,7 @@
   },
   "update_status": "開獎資料尚未出現，保留最後有效資料並持續自動重試",
   "recalculation_proof": {
-    "completed_at": "2026-10-08T03:37:54+08:00",
+    "completed_at": "2026-10-08T04:28:11+08:00",
     "previous_period": "26/106",
     "current_period": "26/106",
     "current_draw_date": "2026-10-06",
