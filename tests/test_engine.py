@@ -13,6 +13,8 @@ class EngineTest(unittest.TestCase):
         self.assertGreater(self.draws[-1].draw_date,self.draws[-2].draw_date)
     def test_models(self):
         m=engine.model_suite(self.draws[:500])
+        self.assertTrue({"lagged_drag","interval_cycle","lag_trace"}.issubset(m))
+        self.assertEqual(len(m),14)
         self.assertTrue(all(len(x)==49 for x in m.values()))
         self.assertTrue(all(abs(x.sum()-6)<1e-6 for x in m.values()))
     def test_next_draw(self): self.assertEqual(engine.next_draw("2026-07-14"),"2026-07-16")

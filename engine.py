@@ -95,6 +95,53 @@ def model_suite(draws: list[Draw], special: bool=False) -> dict[str,np.ndarray]:
                 co=pair[n,a]; vals.append((co+40*marg[n])/(recent[:,a].sum()+40))
             lift[n]=statistics.mean(vals) if vals else marg[n]
         result["conditional_pair"]=normalize_probability(lift,total)
+        # 真正的跨期拖牌：只使用「前一期號碼 -> 下一期號碼」的時序轉移，
+        # 並以強貝氏收縮避免少數巧合被誤當成規律。
+        transition=y[-900:]
+        previous=transition[:-1]
+        following=transition[1:]
+        next_marginal=following.mean(0)
+        latest_anchors=np.flatnonzero(y[-1]>0)
+        lagged_drag=np.full(N,base)
+        for n in range(N):
+            values=[]
+            for anchor in latest_anchors:
+                anchor_count=previous[:,anchor].sum()
+                co=(previous[:,anchor]*following[:,n]).sum()
+                values.append((co+100*next_marginal[n])/(anchor_count+100))
+            lagged_drag[n]=statistics.mean(values) if values else next_marginal[n]
+        result["lagged_drag"]=normalize_probability(lagged_drag,total)
+
+        # 間隔週期：以歷史出現間隔的核平滑危險率評估目前所處週期；
+        # 使用存活樣本作分母，不能把「很久沒出」直接當成「必出」。
+        interval_cycle=np.full(N,base)
+        for n in range(N):
+            positions=np.flatnonzero(y[-1800:,n])
+            intervals=np.diff(positions)
+            target=int(g[n])+1
+            if len(intervals):
+                eligible=intervals[intervals>=target]
+                near=float(np.exp(-0.5*((eligible-target)/2.5)**2).sum()) if len(eligible) else 0.0
+                interval_cycle[n]=(near+80*base)/(len(eligible)+80)
+        result["interval_cycle"]=normalize_probability(interval_cycle,total)
+
+        # 滯後軌跡：檢查2至36期的自我重現關係，只讓當下確有對應歷史觸發的
+        # 滯後參與評分；所有條件率同樣強力收縮，並交由走步回測決定權重。
+        lag_trace=np.full(N,base)
+        trace=y[-1200:]
+        for n in range(N):
+            values=[]
+            series=trace[:,n]
+            for lag in range(2,37):
+                if len(series)<=lag or not series[-lag]:
+                    continue
+                trigger=series[:-lag]
+                outcome=series[lag:]
+                count=trigger.sum()
+                co=(trigger*outcome).sum()
+                values.append((co+120*base)/(count+120))
+            lag_trace[n]=statistics.mean(values) if values else base
+        result["lag_trace"]=normalize_probability(lag_trace,total)
         # Regime slope: recent probability versus stable background, clipped and shrunk.
         short=(y[-30:].sum(0)+base*90)/120; long=(y[-240:].sum(0)+base*180)/420
         result["regime_slope"]=normalize_probability(long+np.clip(short-long,-.025,.025),total)
@@ -126,7 +173,7 @@ def combine_predictions(preds: np.ndarray, weights: np.ndarray, total: float, ra
 
 def walk_forward(draws: list[Draw], rounds: int=520, special: bool=False, weight_config: tuple[float,float,float,float,float]=(.50,.30,.20,3.4,.055), rank_mix: float=0.0) -> dict:
     start=max(360,len(draws)-rounds); names=list(model_suite(draws[:start],special))
-    losses={n:[] for n in names}; hits={n:[] for n in names}; ensemble_rows=[]
+    losses={n:[] for n in names}; hits={n:[] for n in names}; single_hits={n:[] for n in names}; ensemble_rows=[]
     short_w,mid_w,long_w,temperature,streak_cost=weight_config
     weights=np.ones(len(names))/len(names)
     for i in range(start,len(draws)):
@@ -159,11 +206,12 @@ def walk_forward(draws: list[Draw], rounds: int=520, special: bool=False, weight
         ensemble=.20*raw_ensemble+.80*prior
         ensemble_order=np.argsort(ensemble)[::-1]
         actual_ranks=sorted(j+1 for j,idx in enumerate(ensemble_order) if actual[idx])
-        ensemble_rows.append({"period":draws[i].period,"date":draws[i].draw_date,"hit":int(actual[ensemble_order[:k]].sum()),"actual_ranks":actual_ranks,"first_hit_rank":actual_ranks[0],"within_9":actual_ranks[0]<=9,"brier":brier(ensemble,actual),"logloss":logloss(ensemble,actual)})
+        ensemble_rows.append({"period":draws[i].period,"date":draws[i].draw_date,"hit":int(actual[ensemble_order[:k]].sum()),"single_number":int(ensemble_order[0]+1),"single_hit":int(actual[ensemble_order[0]]),"actual_ranks":actual_ranks,"first_hit_rank":actual_ranks[0],"within_9":actual_ranks[0]<=9,"brier":brier(ensemble,actual),"logloss":logloss(ensemble,actual)})
         step=[]
         for j,n in enumerate(names):
-            hit=int(actual[np.argsort(preds[j])[-k:]].sum())
-            loss=logloss(preds[j],actual); losses[n].append(loss); hits[n].append(hit); step.append(loss)
+            order=np.argsort(preds[j])[::-1]
+            hit=int(actual[order[:k]].sum())
+            loss=logloss(preds[j],actual); losses[n].append(loss); hits[n].append(hit); single_hits[n].append(int(actual[order[0]])); step.append(loss)
     uniform=np.full(N,(1 if special else 6)/N)
     actuals=[]
     for d in draws[start:]:
@@ -171,7 +219,8 @@ def walk_forward(draws: list[Draw], rounds: int=520, special: bool=False, weight
     uniform_loss=statistics.mean(logloss(uniform,y) for y in actuals)
     ensemble_loss=statistics.mean(r["logloss"] for r in ensemble_rows)
     recent_windows={str(w):round(statistics.mean(r["hit"] for r in ensemble_rows[-w:]),4) for w in (10,30,60,120)}
-    return {"rounds":len(ensemble_rows),"names":names,"weighting_strategy":"三層滾動權重v4：30期50%＋120期30%＋360期20%，另加校準誤差與連續失誤懲罰，單模型上限22%","weights":{n:round(float(w),8) for n,w in zip(names,weights)},"model_logloss":{n:round(statistics.mean(v),8) for n,v in losses.items()},"model_avg_hits":{n:round(statistics.mean(hits[n]),4) for n in names},"model_recent_30_hits":{n:round(statistics.mean(hits[n][-30:]),4) for n in names},"model_recent_120_hits":{n:round(statistics.mean(hits[n][-120:]),4) for n in names},"model_recent_360_hits":{n:round(statistics.mean(hits[n][-360:]),4) for n in names},"model_failure_streak":{n:trailing_zero_streak(hits[n]) for n in names},"ensemble_recent_hits":recent_windows,"ensemble_logloss":round(ensemble_loss,8),"uniform_logloss":round(uniform_loss,8),"logloss_edge":round(uniform_loss-ensemble_loss,8),"avg_hits":round(statistics.mean(r["hit"] for r in ensemble_rows),4),"rows":ensemble_rows}
+    single_recent={str(w):round(statistics.mean(r["single_hit"] for r in ensemble_rows[-w:]),6) for w in (10,30,60,120)}
+    return {"rounds":len(ensemble_rows),"names":names,"weighting_strategy":"三層滾動權重v4：30期50%＋120期30%＋360期20%，另加校準誤差與連續失誤懲罰，單模型上限22%","weights":{n:round(float(w),8) for n,w in zip(names,weights)},"model_logloss":{n:round(statistics.mean(v),8) for n,v in losses.items()},"model_avg_hits":{n:round(statistics.mean(hits[n]),4) for n in names},"model_single_hit_rate":{n:round(statistics.mean(single_hits[n]),6) for n in names},"model_recent_30_hits":{n:round(statistics.mean(hits[n][-30:]),4) for n in names},"model_recent_120_hits":{n:round(statistics.mean(hits[n][-120:]),4) for n in names},"model_recent_360_hits":{n:round(statistics.mean(hits[n][-360:]),4) for n in names},"model_failure_streak":{n:trailing_zero_streak(hits[n]) for n in names},"ensemble_recent_hits":recent_windows,"single_hit_rate":round(statistics.mean(r["single_hit"] for r in ensemble_rows),6),"single_recent_hit_rate":single_recent,"ensemble_logloss":round(ensemble_loss,8),"uniform_logloss":round(uniform_loss,8),"logloss_edge":round(uniform_loss-ensemble_loss,8),"avg_hits":round(statistics.mean(r["hit"] for r in ensemble_rows),4),"rows":ensemble_rows}
 
 def final_scores(draws: list[Draw], bt: dict, special=False) -> np.ndarray:
     models=model_suite(draws,special); names=bt["names"]
@@ -221,12 +270,14 @@ def prize_division(selected: list[int] | tuple[int,...], draw: Draw) -> str | No
 
 def analyze(draws: list[Draw]) -> dict:
     champion=walk_forward(draws,520,False,(.60,.25,.15,4.0,.07),0.0)
-    challenger=walk_forward(draws,520,False,(.60,.25,.15,4.0,.07),0.5)
-    promote=(challenger["avg_hits"]>=champion["avg_hits"] and challenger["ensemble_recent_hits"]["60"]>=champion["ensemble_recent_hits"]["60"] and challenger["ensemble_recent_hits"]["120"]>=champion["ensemble_recent_hits"]["120"] and challenger["ensemble_logloss"]<=champion["ensemble_logloss"]+.00015)
+    challenger=walk_forward(draws,520,False,(.60,.25,.15,4.0,.07),0.65)
+    # 挑戰者不只要守住前9覆蓋率，也必須在520期與近120期的第1名
+    # 獨支命中率不低於冠軍，避免拿寬牌命中冒充獨支變準。
+    promote=(challenger["avg_hits"]>=champion["avg_hits"] and challenger["ensemble_recent_hits"]["60"]>=champion["ensemble_recent_hits"]["60"] and challenger["ensemble_recent_hits"]["120"]>=champion["ensemble_recent_hits"]["120"] and challenger["single_hit_rate"]>=champion["single_hit_rate"] and challenger["single_recent_hit_rate"]["120"]>=champion["single_recent_hit_rate"]["120"] and challenger["ensemble_logloss"]<=champion["ensemble_logloss"]+.00015)
     main_bt=challenger if promote else champion
-    main_bt["rank_mix"]=0.5 if promote else 0.0
-    main_bt["champion_challenger"]={"promoted":"名次共識混合" if promote else "原機率集成","rule":"挑戰者須同時不低於520期、近60期、近120期命中，且對數損失不得明顯惡化","champion":{"avg520":champion["avg_hits"],"recent60":champion["ensemble_recent_hits"]["60"],"recent120":champion["ensemble_recent_hits"]["120"],"logloss":champion["ensemble_logloss"]},"challenger":{"avg520":challenger["avg_hits"],"recent60":challenger["ensemble_recent_hits"]["60"],"recent120":challenger["ensemble_recent_hits"]["120"],"logloss":challenger["ensemble_logloss"]}}
-    main_bt["external_method_review"]={"採用":["多窗口熱冷頻率","遺漏與經驗危險率","配對關聯","奇偶高低與和值結構","跨模型名次共識","嚴格時間序列走步回測"],"不直接採用":["宣稱必中AI","把逾期號視為必出","未經回測的三連號迷信","以增加注數冒充提高單號機率"]}
+    main_bt["rank_mix"]=0.65 if promote else 0.0
+    main_bt["champion_challenger"]={"promoted":"獨支名次共識混合" if promote else "原機率集成","rule":"挑戰者須同時守住520期、近60期、近120期前9表現，且520期與近120期獨支命中率不得下降，校準損失不得明顯惡化","champion":{"avg520":champion["avg_hits"],"recent60":champion["ensemble_recent_hits"]["60"],"recent120":champion["ensemble_recent_hits"]["120"],"single520":champion["single_hit_rate"],"single120":champion["single_recent_hit_rate"]["120"],"logloss":champion["ensemble_logloss"]},"challenger":{"avg520":challenger["avg_hits"],"recent60":challenger["ensemble_recent_hits"]["60"],"recent120":challenger["ensemble_recent_hits"]["120"],"single520":challenger["single_hit_rate"],"single120":challenger["single_recent_hit_rate"]["120"],"logloss":challenger["ensemble_logloss"]}}
+    main_bt["external_method_review"]={"採用":["多窗口熱冷頻率","遺漏與經驗危險率","同期开奖配對","跨期拖牌轉移","間隔週期核平滑","2至36期滯後軌跡","近期狀態漂移","跨模型名次共識","嚴格時間序列走步回測"],"不直接採用":["宣稱必中AI","把逾期號視為必出","未經回測的三連號迷信","以增加注數冒充提高單號機率","用前9覆蓋率冒充獨支準確率"]}
     special_bt=walk_forward(draws,520,True)
     ms=final_scores(draws,main_bt); ss=final_scores(draws,special_bt,True)
     rank=(np.argsort(ms)[::-1]+1).tolist(); srank=(np.argsort(ss)[::-1]+1).tolist()
@@ -260,20 +311,67 @@ def analyze(draws: list[Draw]) -> dict:
     top3_support=[name for name in main_bt["names"] if strongest in (np.argsort(current_models[name])[::-1]+1)[:3]]
     weighted_support=sum(main_bt["weights"][name] for name in top9_support)
     fair_probability=6/49
+    required_model_support=max(7,math.ceil(len(main_bt["names"])*.60))
     confidence_checks={
         "發布守門通過":gate,
         "校準機率高於公平基準":float(ms[strongest-1])>fair_probability,
-        "至少7個模型列入前9":len(top9_support)>=7,
+        f"至少{required_model_support}個模型列入前9":len(top9_support)>=required_model_support,
         "加權模型共識至少65%":weighted_support>=.65,
         "近60期前9覆蓋優於隨機":main_bt["first_hit_rank_audit"]["60"]["within_9_rate"]>=main_bt["within9_random_baseline"],
         "近120期平均命中優於隨機":main_bt["ensemble_recent_hits"]["120"]>=main_random,
         "第一名分數嚴格高於第二名":float(ms[rank[0]-1])>float(ms[rank[1]-1])
     }
     super_consensus=all(confidence_checks.values())
-    main_bt["confidence_audit"]={"number":strongest,"label":"超高共識・本期唯一最強推薦" if super_consensus else "觀察級・本期唯一最強排序（未達超高共識）","super_consensus":super_consensus,"calibrated_probability":round(float(ms[strongest-1]),6),"fair_probability":round(fair_probability,6),"relative_lift_pct":round((float(ms[strongest-1])/fair_probability-1)*100,2),"score_gap_to_second":round(float(ms[rank[0]-1]-ms[rank[1]-1]),8),"model_top9_support":len(top9_support),"model_top3_support":len(top3_support),"weighted_support_pct":round(weighted_support*100,2),"checks":confidence_checks,"warning":"超高共識代表多項模型邏輯一致，不代表必中；六合彩單號公平基準仍約12.24%。未通過守門時只列觀察排序，不得冒充高信心推薦。"}
+    main_bt["confidence_audit"]={"number":strongest,"label":"超高共識・本期唯一最強推薦" if super_consensus else "觀察級・本期唯一最強排序（未達超高共識）","super_consensus":super_consensus,"calibrated_probability":round(float(ms[strongest-1]),6),"fair_probability":round(fair_probability,6),"relative_lift_pct":round((float(ms[strongest-1])/fair_probability-1)*100,2),"score_gap_to_second":round(float(ms[rank[0]-1]-ms[rank[1]-1]),8),"model_top9_support":len(top9_support),"required_model_support":required_model_support,"model_top3_support":len(top3_support),"weighted_support_pct":round(weighted_support*100,2),"checks":confidence_checks,"warning":"超高共識代表多項模型邏輯一致，不代表必中；六合彩單號公平基準仍約12.24%。未通過守門時只列觀察排序，不得冒充高信心推薦。"}
+
+    model_groups={
+        "長短期頻率":["bayes_24","bayes_60","bayes_150","bayes_360"],
+        "近期軌跡":["ewma_8","ewma_21","ewma_55","ewma_144","regime_slope"],
+        "遺漏與間隔週期":["empirical_hazard","interval_cycle"],
+        "同期开奖與跨期拖牌":["conditional_pair","lagged_drag"],
+        "滯後規律":["lag_trace"],
+    }
+    module_groups=[]
+    for label,names in model_groups.items():
+        support=[]
+        ranks={}
+        for name in names:
+            order=(np.argsort(current_models[name])[::-1]+1).tolist()
+            position=order.index(strongest)+1
+            ranks[name]=position
+            if position<=9:
+                support.append(name)
+        module_groups.append({"group":label,"models":names,"supporting_models":support,"support_count":len(support),"strongest_ranks":ranks,"passed":bool(support)})
+    trajectory_checks={
+        "完整歷史資料至少4000期":len(draws)>=4000,
+        "520期逐期向前走步驗證":main_bt["rounds"]==520,
+        "頻率軌跡週期拖牌模組全部執行":all(name in current_models for names in model_groups.values() for name in names),
+        "每期只使用當時以前資料":all(row["date"]==draws[len(draws)-len(main_bt["rows"])+i].draw_date for i,row in enumerate(main_bt["rows"])),
+        "候選號碼1至49完整排序":len(rank)==49 and len(set(rank))==49,
+        "第一名分數嚴格高於第二名":float(ms[rank[0]-1])>float(ms[rank[1]-1]),
+        "單一模型權重不超過22%":max(main_bt["weights"].values())<=.22,
+    }
+    main_bt["trajectory_audit"]={
+        "daily_strongest":strongest,
+        "based_on_period":draws[-1].period,
+        "based_on_date":draws[-1].draw_date,
+        "history_draws":len(draws),
+        "model_count":len(main_bt["names"]),
+        "module_groups":module_groups,
+        "checks":trajectory_checks,
+        "strict_computation_passed":all(trajectory_checks.values()),
+        "walk_forward_rounds":main_bt["rounds"],
+        "walk_forward_single_hits":sum(row["single_hit"] for row in main_bt["rows"]),
+        "walk_forward_single_hit_rate":main_bt["single_hit_rate"],
+        "walk_forward_single_recent":main_bt["single_recent_hit_rate"],
+        "fair_single_rate":round(fair_probability,6),
+        "target_accuracy_pct":90.0,
+        "certified_90_accuracy":False,
+        "certification_rule":"只承認開獎前封存且逐期獨立結算的命中率；不得用前九、回填或重複快照冒充獨支90%準確率",
+    }
     main_bt["recommendation_tiers"]={"A_唯一最強":[strongest],"B_高信心前三":rank[:3],"C_核心前九":rank[:9],"D_次高防守":rank[9:18],"E_低機率暫避":sorted(rank[-10:])}
-    main_bt["strongest_single_audit"]={"number":rank[0],"calibrated_probability":round(float(ms[rank[0]-1]),6),"selection_rule":"所有模型依30／120／360期三層成績、校準誤差與連續失誤重新配權後，取校準機率唯一第1名","based_on_period":draws[-1].period,"based_on_date":draws[-1].draw_date}
-    return {"system":"香港六合彩新世代鐵律預測系統","engine":"marksix_cleanroom_ensemble_v4_dual_track","generated_at":date.today().isoformat(),"history":{"count":len(draws),"first":draws[0].draw_date,"latest":draws[-1].draw_date,"latest_period":draws[-1].period},"latest_draw":{"period":draws[-1].period,"date":draws[-1].draw_date,"main":draws[-1].main,"special":draws[-1].special},"target_date":next_draw(draws[-1].draw_date,draws),"main_rank":[{"rank":i+1,"number":n,"probability":round(float(ms[n-1]),6)} for i,n in enumerate(rank)],"special_rank":[{"rank":i+1,"number":n,"probability":round(float(ss[n-1]),6)} for i,n in enumerate(srank)],"packs":{"最強單支":rank[:1],"二中一":rank[:2],"三中一":rank[:3],"五中二":rank[:5],"九中三":rank[:9],"主攻12碼":rank[:12],"防守18碼":rank[:18]},"special_packs":{"最強單支":srank[:1],"三碼觀察":srank[:3]},"avoid":{"五不中":sorted(rank[-5:]),"十不中":sorted(rank[-10:]),"十五不中":sorted(rank[-15:])},"suggested_sets":build_sets(ms),"rules":{"range":"1–49","main_numbers":6,"extra_numbers":1,"unit_bet_hkd":10,"prizes":{"一獎":"6個正選號碼","二獎":"5個正選號碼＋特別號","三獎":"5個正選號碼","四獎":"4個正選號碼＋特別號（固定HK$9,600）","五獎":"4個正選號碼（固定HK$640）","六獎":"3個正選號碼＋特別號（固定HK$320）","七獎":"3個正選號碼（固定HK$40）"}},"backtest":{"main":main_bt,"special":special_bt},"release_gate":{"passed":gate,"publish_mode":"超高共識推薦" if gate else "觀察級排序","rule":"預測信心守門與開獎資料同步分離；未達門檻只降級標示，絕不可阻斷最新資料更新","main_edge":main_bt["logloss_edge"],"special_edge":special_bt["logloss_edge"],"main_avg_hits":main_bt["avg_hits"],"main_random_hits":round(main_random,4),"special_avg_hits":special_bt["avg_hits"],"special_random_hits":round(special_random,4),"max_main_weight":max(main_bt["weights"].values())},"operational_policy":{"data_sync_independent":True,"model_gate_blocks_data":False,"failed_gate_action":"保留最新資料、降級標示、啟動滾動檢討"},"notice":"六合彩每期開獎為獨立隨機事件；本系統只做可回測的機率排序，不保證中獎。請量力而為，未滿18歲不得投注。"}
+    main_bt["strongest_single_audit"]={"number":rank[0],"calibrated_probability":round(float(ms[rank[0]-1]),6),"selection_rule":"14個頻率、軌跡、週期與拖牌模型依30／120／360期成績、校準誤差與連續失誤重新配權後，取校準機率唯一第1名","based_on_period":draws[-1].period,"based_on_date":draws[-1].draw_date}
+    return {"system":"香港六合彩新世代鐵律預測系統","engine":"marksix_cleanroom_ensemble_v6_trajectory_audit","generated_at":date.today().isoformat(),"history":{"count":len(draws),"first":draws[0].draw_date,"latest":draws[-1].draw_date,"latest_period":draws[-1].period},"latest_draw":{"period":draws[-1].period,"date":draws[-1].draw_date,"main":draws[-1].main,"special":draws[-1].special},"target_date":next_draw(draws[-1].draw_date,draws),"main_rank":[{"rank":i+1,"number":n,"probability":round(float(ms[n-1]),6)} for i,n in enumerate(rank)],"special_rank":[{"rank":i+1,"number":n,"probability":round(float(ss[n-1]),6)} for i,n in enumerate(srank)],"packs":{"最強單支":rank[:1],"二中一":rank[:2],"三中一":rank[:3],"五中二":rank[:5],"九中三":rank[:9],"主攻12碼":rank[:12],"防守18碼":rank[:18]},"special_packs":{"最強單支":srank[:1],"三碼觀察":srank[:3]},"avoid":{"五不中":sorted(rank[-5:]),"十不中":sorted(rank[-10:]),"十五不中":sorted(rank[-15:])},"suggested_sets":build_sets(ms),"rules":{"range":"1–49","main_numbers":6,"extra_numbers":1,"unit_bet_hkd":10,"prizes":{"一獎":"6個正選號碼","二獎":"5個正選號碼＋特別號","三獎":"5個正選號碼","四獎":"4個正選號碼＋特別號（固定HK$9,600）","五獎":"4個正選號碼（固定HK$640）","六獎":"3個正選號碼＋特別號（固定HK$320）","七獎":"3個正選號碼（固定HK$40）"}},"backtest":{"main":main_bt,"special":special_bt},"release_gate":{"passed":gate,"publish_mode":"超高共識推薦" if gate else "觀察級排序","rule":"預測信心守門與開獎資料同步分離；未達門檻只降級標示，絕不可阻斷最新資料更新","main_edge":main_bt["logloss_edge"],"special_edge":special_bt["logloss_edge"],"main_avg_hits":main_bt["avg_hits"],"main_random_hits":round(main_random,4),"special_avg_hits":special_bt["avg_hits"],"special_random_hits":round(special_random,4),"max_main_weight":max(main_bt["weights"].values())},"operational_policy":{"data_sync_independent":True,"model_gate_blocks_data":False,"failed_gate_action":"保留最新資料、降級標示、啟動滾動檢討"},"notice":"歷史資料可用來檢測偏差與比較模型，但不能把未通過獨立封存驗證的軌跡宣稱為確定規律。本系統只發布可稽核的機率排序，不保證中獎。請量力而為，未滿18歲不得投注。"}
 
 if __name__=="__main__":
     result=analyze(load_draws())

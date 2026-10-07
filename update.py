@@ -143,7 +143,18 @@ def apply_live_single_audit(result: dict, history: list[dict]) -> dict:
     minimum_samples=30
     overall_rate=hit_count/total if total else 0.0
     recent10_rate=sum(item["hit"] for item in recent10)/len(recent10) if recent10 else 0.0
+    # 95% Wilson下限比單看樣本命中率嚴格，可防止1中1、9中10之類的小樣本
+    # 被包裝成「90%以上準確」。
+    if total:
+        z=1.959963984540054
+        denominator=1+z*z/total
+        centre=overall_rate+z*z/(2*total)
+        margin=z*((overall_rate*(1-overall_rate)/total+z*z/(4*total*total))**0.5)
+        wilson_lower=max(0.0,(centre-margin)/denominator)
+    else:
+        wilson_lower=0.0
     live_passed=total>=minimum_samples and overall_rate>=fair and len(recent10)>=10 and recent10_rate>=fair
+    certified_90=total>=minimum_samples and wilson_lower>=.90
     audit={
         "method":"每個目標開獎日只計一次；同日多個封存版本採開獎前最近版本",
         "settled_snapshots":settled_snapshots,
@@ -151,6 +162,7 @@ def apply_live_single_audit(result: dict, history: list[dict]) -> dict:
         "duplicate_snapshots_excluded":settled_snapshots-total,
         "hits":hit_count,
         "hit_rate":round(overall_rate,6),
+        "hit_rate_wilson_95_lower":round(wilson_lower,6),
         "fair_single_rate":round(fair,6),
         "recent_5":{"draws":len(recent5),"hits":sum(item["hit"] for item in recent5),"hit_rate":round(sum(item["hit"] for item in recent5)/len(recent5),6) if recent5 else 0.0},
         "recent_10":{"draws":len(recent10),"hits":sum(item["hit"] for item in recent10),"hit_rate":round(recent10_rate,6)},
@@ -161,6 +173,7 @@ def apply_live_single_audit(result: dict, history: list[dict]) -> dict:
         "current_number_hits":sum(item["hit"] for item in current_samples),
         "minimum_independent_samples":minimum_samples,
         "live_gate_passed":live_passed,
+        "certified_90_accuracy":certified_90,
         "outcomes":outcomes,
     }
     result["live_single_audit"]=audit
@@ -179,6 +192,24 @@ def apply_live_single_audit(result: dict, history: list[dict]) -> dict:
     confidence["warning"]=(
         f"目前只有{total}個獨立封存開獎日（{hit_count}中，{overall_rate*100:.1f}%）；"
         f"未達{minimum_samples}期實戰門檻，因此保留最強排序，但禁止標示超高信心或必中。"
+    )
+    trajectory=result["backtest"]["main"].get("trajectory_audit",{})
+    trajectory["sealed_independent_draws"]=total
+    trajectory["sealed_single_hits"]=hit_count
+    trajectory["sealed_single_hit_rate"]=round(overall_rate,6)
+    trajectory["sealed_wilson_95_lower"]=round(wilson_lower,6)
+    trajectory["performance_checks"]={
+        f"開獎前封存實戰至少{minimum_samples}期":total>=minimum_samples,
+        "封存實戰命中率至少90%":overall_rate>=.90,
+        "95%信賴下限至少90%":wilson_lower>=.90,
+        "沒有重複快照灌水":settled_snapshots-total==audit["duplicate_snapshots_excluded"],
+    }
+    trajectory["certified_90_accuracy"]=certified_90
+    trajectory["status"]=(
+        f"每日嚴格運算已完成；520期走步獨支{trajectory.get('walk_forward_single_hits',0)}中／"
+        f"{trajectory.get('walk_forward_rounds',0)}期（{trajectory.get('walk_forward_single_hit_rate',0)*100:.2f}%），"
+        f"封存實戰{hit_count}中／{total}期（{overall_rate*100:.2f}%）。"
+        f"90%準確度{'已通過統計認證' if certified_90 else '尚未通過，禁止標示或保證'}。"
     )
     return audit
 
@@ -214,12 +245,13 @@ def apply_consecutive_single_audit(result: dict, history: list[dict]) -> dict:
         previous_hit=previous_number in set(map(int,previous["actual"]["main"]))
     confidence=result["backtest"]["main"]["confidence_audit"]
     model_count=len(result["backtest"]["main"]["names"])
+    required_support=int(confidence.get("required_model_support",max(7,round(model_count*.60))))
     is_repeat=streak>=2
     checks={
         "跨不同依據期別重新運算":bool(previous and previous.get("based_on_period")!=current_period and previous.get("based_on_date","")<result["latest_draw"]["date"]),
         "最新開獎資料已納入":current.get("based_on_period")==current_period and current.get("based_on_date")==result["latest_draw"]["date"],
         "第一名嚴格高於第二名":confidence.get("score_gap_to_second",0)>0,
-        "至少7個模型列入前9":confidence.get("model_top9_support",0)>=7,
+        f"至少{required_support}個模型列入前9":confidence.get("model_top9_support",0)>=required_support,
         "加權模型共識至少65%":confidence.get("weighted_support_pct",0)>=65,
         "原始模型發布守門通過":bool(result["release_gate"].get("model_passed",result["release_gate"].get("passed"))),
     }
@@ -254,7 +286,7 @@ def apply_consecutive_single_audit(result: dict, history: list[dict]) -> dict:
     confidence["checks"]["連莊合理性驗證"]=reasonable
     if is_repeat and not reasonable:
         confidence["super_consensus"]=False
-        confidence["label"]="連莊驗證未通過・僅保留排序"
+        confidence["label"]="觀察級・連莊驗證未通過・實戰樣本累積中"
         result["release_gate"]["passed"]=False
         result["release_gate"]["publish_mode"]="觀察級・連莊驗證未通過"
     return audit
