@@ -136,6 +136,12 @@
       "detail": "independent=15; label=模型排序第1・實戰樣本累積中"
     },
     {
+      "name": "recalculation_proof",
+      "passed": true,
+      "severity": "critical",
+      "detail": "{\"completed_at\": \"2026-10-07T09:11:38+08:00\", \"previous_period\": \"26/106\", \"current_period\": \"26/106\", \"current_draw_date\": \"2026-10-06\", \"data_changed\": false, \"previous_single\": 31, \"current_single\": 31, \"single_changed\": false, \"crosschecked_dates\": 100, \"status\": \"官方開獎資料未新增，已用26/106期完整重算；獨支重算後維持31，不是沿用舊頁\"}"
+    },
+    {
       "name": "recommendation_tiers_clear",
       "passed": true,
       "severity": "critical",
@@ -169,7 +175,7 @@
       "name": "mobile_manual_controls",
       "passed": true,
       "severity": "critical",
-      "detail": "cache purge + four-file proof + workflow status + persistent completion time + secure primary/recovery workflow entries"
+      "detail": "cache purge + four-file proof + explicit recomputation comparison + workflow status + persistent completion time + secure primary/recovery workflow entries"
     },
     {
       "name": "interface_539_spec",

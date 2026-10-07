@@ -184,10 +184,15 @@ def apply_live_single_audit(result: dict, history: list[dict]) -> dict:
 
 def main():
     previous_target=None
+    previous_analysis={}
     previous_report=ROOT/"reports"/"latest_analysis.json"
     if previous_report.exists():
-        try: previous_target=json.loads(previous_report.read_text(encoding="utf-8"))["target_date"]
-        except Exception: previous_target=None
+        try:
+            previous_analysis=json.loads(previous_report.read_text(encoding="utf-8"))
+            previous_target=previous_analysis.get("target_date")
+        except Exception:
+            previous_analysis={}
+            previous_target=None
     source_status=update_latest(); result=analyze(load_draws())
     schedule_error=None
     try: announced_target=fetch_announced_next_draw()
@@ -218,6 +223,23 @@ def main():
         result["update_status"]="最新開獎資料已同步；下期日期來源暫時降級並持續覆核"
     else:
         result["update_status"]="最新資料已完成抓取、結算、重算與手機同步"
+    previous_draw=previous_analysis.get("latest_draw",{})
+    previous_single=(previous_analysis.get("packs",{}).get("最強單支") or [None])[0]
+    current_single=int(result["packs"]["最強單支"][0])
+    data_changed=previous_draw.get("period")!=result["latest_draw"]["period"] or previous_draw.get("date")!=result["latest_draw"]["date"]
+    single_changed=previous_single is not None and int(previous_single)!=current_single
+    result["recalculation_proof"]={
+        "completed_at":datetime.now(timezone(timedelta(hours=8))).isoformat(timespec="seconds"),
+        "previous_period":previous_draw.get("period"),
+        "current_period":result["latest_draw"]["period"],
+        "current_draw_date":result["latest_draw"]["date"],
+        "data_changed":data_changed,
+        "previous_single":int(previous_single) if previous_single is not None else None,
+        "current_single":current_single,
+        "single_changed":single_changed,
+        "crosschecked_dates":source_status["crosschecked_dates"],
+        "status":("已加入新開獎資料並完整重算" if data_changed else f"官方開獎資料未新增，已用{result['latest_draw']['period']}期完整重算；獨支重算後維持{current_single:02d}，不是沿用舊頁"),
+    }
     history=settle_and_save(result); apply_live_single_audit(result,history); build_reports(result,history)
     print(json.dumps({"data":source_status,"latest":result["latest_draw"],"target":result["target_date"],"target_source":target_source,"gate":result["release_gate"]},ensure_ascii=False,indent=2))
 if __name__=="__main__": main()
