@@ -157,7 +157,7 @@
       "name": "recalculation_proof",
       "passed": true,
       "severity": "critical",
-      "detail": "{\"completed_at\": \"2026-10-08T12:15:10+08:00\", \"previous_period\": \"26/106\", \"current_period\": \"26/106\", \"current_draw_date\": \"2026-10-06\", \"data_changed\": false, \"previous_single\": 7, \"current_single\": 7, \"single_changed\": false, \"crosschecked_dates\": 100, \"status\": \"官方開獎資料未新增，已用26/106期完整重算；終極獨支維持07，不是沿用舊頁\"}"
+      "detail": "{\"completed_at\": \"2026-10-08T12:16:14+08:00\", \"previous_period\": \"26/106\", \"current_period\": \"26/106\", \"current_draw_date\": \"2026-10-06\", \"data_changed\": false, \"previous_single\": 7, \"current_single\": 7, \"single_changed\": false, \"crosschecked_dates\": 100, \"status\": \"官方開獎資料未新增，已用26/106期完整重算；終極獨支維持07，不是沿用舊頁\"}"
     },
     {
       "name": "consecutive_single_rationality",
