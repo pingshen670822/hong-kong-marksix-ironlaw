@@ -84,7 +84,8 @@ def update_latest() -> dict:
         same_day=by_date.get(draw_date)
         period=same_day["period"] if same_day else str(item["draw_id"])
         old=by_period.get(period,{k:"" for k in fields})
-        old.update({"period":period,"draw_date":item["draw_date"],**{f"n{i+1}":str(n) for i,n in enumerate(nums)},"special":str(special),"sales_amount":str(item.get("total_turnover") or old.get("sales_amount") or ""),"source":"multi_source_marksix_crosscheck","fetched_at":date.today().isoformat()})
+        source=("multi_source_marksix_crosscheck" if draw_date in primary_by_date and draw_date in fallback_by_date else ("primary_marksix" if draw_date in primary_by_date else "fallback_on99_pending_crosscheck"))
+        old.update({"period":period,"draw_date":item["draw_date"],**{f"n{i+1}":str(n) for i,n in enumerate(nums)},"special":str(special),"sales_amount":str(item.get("total_turnover") or old.get("sales_amount") or ""),"source":source,"fetched_at":date.today().isoformat()})
         by_period[period]=old
         by_date[draw_date]=old
     ordered=sorted(by_period.values(),key=lambda r:r["draw_date"])
@@ -92,7 +93,9 @@ def update_latest() -> dict:
     with tmp.open("w",encoding="utf-8-sig",newline="") as f:
         w=csv.DictWriter(f,fieldnames=fields); w.writeheader(); w.writerows(ordered)
     tmp.replace(CSV_PATH)
-    return {"draws":len(ordered),"primary_rows":len(primary),"fallback_rows":len(fallback),"crosschecked_dates":len(overlaps),"source_errors":source_errors}
+    latest_date=ordered[-1]["draw_date"]
+    latest_source=("雙來源一致" if latest_date in overlaps else ("主來源已發布，備援待核對" if latest_date in primary_by_date else ("備援來源已發布，主來源待核對" if latest_date in fallback_by_date else "既有歷史資料，來源待核對")))
+    return {"draws":len(ordered),"primary_rows":len(primary),"fallback_rows":len(fallback),"crosschecked_dates":len(overlaps),"latest_source":latest_source,"latest_crosschecked":latest_date in overlaps,"source_errors":source_errors}
 
 def settle_and_save(result: dict):
     history=json.loads(HISTORY_PATH.read_text(encoding="utf-8-sig")) if HISTORY_PATH.exists() else []
@@ -359,6 +362,7 @@ def main():
         "current_single":current_single,
         "single_changed":single_changed,
         "crosschecked_dates":source_status["crosschecked_dates"],
+        "latest_source":source_status["latest_source"],
         "status":("已加入新開獎資料並完整重算" if data_changed else (f"官方開獎資料未新增；全候選高信心新核心重算後，終極獨支由{int(previous_single):02d}改為{current_single:02d}" if single_changed and previous_single is not None else f"官方開獎資料未新增，已用{result['latest_draw']['period']}期完整重算；終極獨支維持{current_single:02d}，不是沿用舊頁")),
     }
     history=settle_and_save(result); apply_live_single_audit(result,history); apply_consecutive_single_audit(result,history); build_reports(result,history)

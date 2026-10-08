@@ -1,15 +1,15 @@
 {
   "system": "香港六合彩新世代鐵律預測系統",
-  "checked_at": "2026-10-08T14:51:47+08:00",
+  "checked_at": "2026-10-08T21:49:27+08:00",
   "passed": true,
-  "latest_period": "26/106",
-  "latest_date": "2026-10-06",
+  "latest_period": "26/107",
+  "latest_date": "2026-10-08",
   "prediction_gate_passed": false,
   "checks": [
     {
       "name": "row_count_consistent",
       "passed": true,
-      "detail": "csv=4394 parsed=4394"
+      "detail": "csv=4395 parsed=4395"
     },
     {
       "name": "unique_draw_dates",
@@ -24,7 +24,7 @@
     {
       "name": "chronological_order",
       "passed": true,
-      "detail": "first=1993-01-05 latest=2026-10-06"
+      "detail": "first=1993-01-05 latest=2026-10-08"
     },
     {
       "name": "numbers_valid",
@@ -34,7 +34,7 @@
     {
       "name": "settlements_immutable_and_matched",
       "passed": true,
-      "detail": "settled=16"
+      "detail": "settled=18"
     },
     {
       "name": "unique_prediction_snapshots",
@@ -44,12 +44,12 @@
     {
       "name": "analysis_based_on_latest",
       "passed": true,
-      "detail": "analysis=2026-10-06 csv=2026-10-06"
+      "detail": "analysis=2026-10-08 csv=2026-10-08"
     },
     {
       "name": "prediction_snapshot_exists",
       "passed": true,
-      "detail": "26/106 marksix_cleanroom_ensemble_v7_all_candidate_confidence"
+      "detail": "26/107 marksix_cleanroom_ensemble_v7_all_candidate_confidence"
     }
   ]
 }
