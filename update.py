@@ -103,8 +103,12 @@ def settle_and_save(result: dict):
         if actual:
             aset=set(actual.main); p["status"]="settled"; p["actual"]={"period":actual.period,"date":actual.draw_date,"main":actual.main,"special":actual.special}
             p["settlement"]={"pack_hits":{k:{"count":len(aset&set(v)),"numbers":sorted(aset&set(v))} for k,v in p["packs"].items()},"special_hit":actual.special in p["special_packs"]["三碼觀察"],"avoid_errors":{k:sorted(aset&set(v)) for k,v in p["avoid"].items()}}
-    if not any(p["based_on_period"]==result["latest_draw"]["period"] for p in history):
-        history.append({"created_at":result["generated_at"],"based_on_period":result["latest_draw"]["period"],"based_on_date":result["latest_draw"]["date"],"target_date":result["target_date"],"status":"pending","packs":result["packs"],"special_packs":result["special_packs"],"avoid":result["avoid"],"suggested_sets":result["suggested_sets"]})
+    engine=result.get("engine","legacy")
+    snapshot_key=(result["latest_draw"]["period"],result["target_date"],engine)
+    exists=any((p.get("based_on_period"),p.get("target_date"),p.get("engine","legacy"))==snapshot_key for p in history)
+    if not exists:
+        created_at=result.get("recalculation_proof",{}).get("completed_at") or result["generated_at"]
+        history.append({"forecast_id":"|".join(snapshot_key),"engine":engine,"created_at":created_at,"based_on_period":result["latest_draw"]["period"],"based_on_date":result["latest_draw"]["date"],"target_date":result["target_date"],"status":"pending","packs":result["packs"],"special_packs":result["special_packs"],"avoid":result["avoid"],"suggested_sets":result["suggested_sets"]})
     HISTORY_PATH.write_text(json.dumps(history,ensure_ascii=False,indent=2),encoding="utf-8")
     return history
 
@@ -119,9 +123,9 @@ def apply_live_single_audit(result: dict, history: list[dict]) -> dict:
             continue
         settled_snapshots+=1
         target=prediction.get("target_date","")
-        key=(prediction.get("based_on_date", ""),prediction.get("based_on_period", ""))
+        key=(prediction.get("created_at", ""),prediction.get("based_on_date", ""),prediction.get("based_on_period", ""))
         current=by_target.get(target)
-        if current is None or key>(current.get("based_on_date", ""),current.get("based_on_period", "")):
+        if current is None or key>(current.get("created_at", ""),current.get("based_on_date", ""),current.get("based_on_period", "")):
             by_target[target]=prediction
     outcomes=[]
     for target,prediction in sorted(by_target.items()):
@@ -182,16 +186,19 @@ def apply_live_single_audit(result: dict, history: list[dict]) -> dict:
     release["model_passed"]=model_passed
     release["live_single_passed"]=live_passed
     release["passed"]=model_passed and live_passed
-    release["publish_mode"]="超高共識推薦" if release["passed"] else "觀察級・實戰樣本累積中"
+    high_confidence_candidate=bool(result["backtest"]["main"]["confidence_audit"].get("high_confidence_candidate"))
+    release["publish_mode"]="超高共識推薦" if release["passed"] else ("全模組高信心候選・實戰認證累積中" if high_confidence_candidate else "觀察級・實戰樣本累積中")
     confidence=result["backtest"]["main"]["confidence_audit"]
     model_consensus=bool(confidence.get("super_consensus"))
     confidence["model_super_consensus"]=model_consensus
     confidence["checks"][f"封存實戰至少{minimum_samples}個獨立開獎日"]=live_passed
     confidence["super_consensus"]=model_consensus and live_passed
-    confidence["label"]="超高共識・本期唯一最強推薦" if confidence["super_consensus"] else "模型排序第1・實戰樣本累積中"
+    confidence["label"]=("超高共識・本期唯一最強推薦" if confidence["super_consensus"] else ("全模組高信心候選・實戰認證累積中" if high_confidence_candidate else "模型排序第1・實戰樣本累積中"))
+    candidate_text=(f"候選專屬走步{confidence.get('candidate_walk_forward_hits',0)}中／{confidence.get('candidate_walk_forward_samples',0)}期，"
+                    f"95%下限{confidence.get('candidate_wilson_95_lower',0)*100:.2f}%；") if high_confidence_candidate else ""
     confidence["warning"]=(
-        f"目前只有{total}個獨立封存開獎日（{hit_count}中，{overall_rate*100:.1f}%）；"
-        f"未達{minimum_samples}期實戰門檻，因此保留最強排序，但禁止標示超高信心或必中。"
+        f"{candidate_text}封存實戰目前{total}個獨立開獎日（{hit_count}中，{overall_rate*100:.1f}%）。"
+        f"這是全模組高信心候選，不是必中或90%保證；滿{minimum_samples}期前持續獨立認證。"
     )
     trajectory=result["backtest"]["main"].get("trajectory_audit",{})
     trajectory["sealed_independent_draws"]=total
@@ -221,7 +228,8 @@ def apply_consecutive_single_audit(result: dict, history: list[dict]) -> dict:
         if not basis or not prediction.get("packs",{}).get("最強單支"):
             continue
         current=by_basis.get(basis)
-        if current is None or prediction.get("target_date","")>current.get("target_date",""):
+        key=(prediction.get("target_date",""),prediction.get("created_at",""))
+        if current is None or key>(current.get("target_date",""),current.get("created_at","")):
             by_basis[basis]=prediction
     snapshots=sorted(by_basis.values(),key=lambda item:(item.get("based_on_date",""),item.get("based_on_period","")))
     current_period=result["latest_draw"]["period"]
@@ -325,6 +333,10 @@ def main():
     waiting=bool(target<=date.today().isoformat() and latest_date<target)
     result["target_date"]=target
     result["target_source"]=target_source
+    main_backtest=result.get("backtest",{}).get("main",{})
+    for section in ("confidence_tournament","confidence_audit","trajectory_audit","strongest_single_audit"):
+        if isinstance(main_backtest.get(section),dict):
+            main_backtest[section]["target_date"]=target
     result["data_source_status"]={**source_status,"schedule_error":schedule_error}
     if waiting:
         result["update_status"]="開獎資料尚未出現，保留最後有效資料並持續自動重試"
@@ -347,7 +359,7 @@ def main():
         "current_single":current_single,
         "single_changed":single_changed,
         "crosschecked_dates":source_status["crosschecked_dates"],
-        "status":("已加入新開獎資料並完整重算" if data_changed else f"官方開獎資料未新增，已用{result['latest_draw']['period']}期完整重算；獨支重算後維持{current_single:02d}，不是沿用舊頁"),
+        "status":("已加入新開獎資料並完整重算" if data_changed else (f"官方開獎資料未新增；全候選高信心新核心重算後，終極獨支由{int(previous_single):02d}改為{current_single:02d}" if single_changed and previous_single is not None else f"官方開獎資料未新增，已用{result['latest_draw']['period']}期完整重算；終極獨支維持{current_single:02d}，不是沿用舊頁")),
     }
     history=settle_and_save(result); apply_live_single_audit(result,history); apply_consecutive_single_audit(result,history); build_reports(result,history)
     print(json.dumps({"data":source_status,"latest":result["latest_draw"],"target":result["target_date"],"target_source":target_source,"gate":result["release_gate"]},ensure_ascii=False,indent=2))

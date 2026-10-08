@@ -268,6 +268,16 @@ def prize_division(selected: list[int] | tuple[int,...], draw: Draw) -> str | No
     hits=len(set(selected)&set(draw.main)); extra=draw.special in selected
     return {(6,False):"一獎",(5,True):"二獎",(5,False):"三獎",(4,True):"四獎",(4,False):"五獎",(3,True):"六獎",(3,False):"七獎"}.get((hits,extra))
 
+def wilson_lower(hits: int, samples: int, z: float=1.959963984540054) -> float:
+    """二項比例的95% Wilson下限，避免小樣本高命中被誤標高信心。"""
+    if samples<=0:
+        return 0.0
+    rate=hits/samples
+    denominator=1+z*z/samples
+    centre=rate+z*z/(2*samples)
+    margin=z*math.sqrt(rate*(1-rate)/samples+z*z/(4*samples*samples))
+    return max(0.0,(centre-margin)/denominator)
+
 def analyze(draws: list[Draw]) -> dict:
     champion=walk_forward(draws,520,False,(.60,.25,.15,4.0,.07),0.0)
     challenger=walk_forward(draws,520,False,(.60,.25,.15,4.0,.07),0.65)
@@ -305,24 +315,95 @@ def analyze(draws: list[Draw]) -> dict:
     main_bt["weighting_strategy"]="前9碼三層滾動權重v5：30期60%＋120期25%＋360期15%，另加校準誤差與連續失誤懲罰，單模型上限22%"
     main_bt["within9_random_baseline"]=round(within9_random,4)
     main_bt["first_hit_rank_audit"]={str(w):{"within_9_rate":round(statistics.mean(r["within_9"] for r in main_bt["rows"][-w:]),4),"average_first_hit_rank":round(statistics.mean(r["first_hit_rank"] for r in main_bt["rows"][-w:]),4),"outside_9_count":sum(not r["within_9"] for r in main_bt["rows"][-w:])} for w in (10,30,60,120)}
-    strongest=rank[0]
+    probability_rank=rank[:]
+    probability_champion=probability_rank[0]
     current_models=model_suite(draws,False)
+    fair_probability=6/49
+    required_model_support=max(7,math.ceil(len(main_bt["names"])*.60))
+    required_top3_support=math.ceil(len(main_bt["names"])*.50)
+    minimum_candidate_samples=20
+
+    # 49碼全候選競賽：每個號碼都同時接受14模組現況共識與520期逐期走步
+    # 的候選專屬實績檢查。這讓「最高即時機率」與「最高可驗證信心」分開，
+    # 避免只有1次樣本的號碼因短期第一名就被誤標為高信心。
+    candidate_tournament=[]
+    probability_positions={number:index+1 for index,number in enumerate(probability_rank)}
+    probability_floor=float(ms[probability_rank[-1]-1])
+    probability_ceiling=float(ms[probability_rank[0]-1])
+    probability_span=max(1e-12,probability_ceiling-probability_floor)
+    for number in range(1,50):
+        model_ranks={name:(np.argsort(current_models[name])[::-1]+1).tolist().index(number)+1 for name in main_bt["names"]}
+        top9=[name for name,value in model_ranks.items() if value<=9]
+        top3=[name for name,value in model_ranks.items() if value<=3]
+        weighted_top9=sum(main_bt["weights"][name] for name in top9)
+        weighted_top3=sum(main_bt["weights"][name] for name in top3)
+        historical=[row for row in main_bt["rows"] if int(row["single_number"])==number]
+        samples=len(historical)
+        hits=sum(int(row["single_hit"]) for row in historical)
+        rate=hits/samples if samples else 0.0
+        lower=wilson_lower(hits,samples)
+        checks={
+            "校準機率高於公平基準":float(ms[number-1])>fair_probability,
+            f"至少{required_model_support}個模型列入前9":len(top9)>=required_model_support,
+            "加權模型前9共識至少65%":weighted_top9>=.65,
+            f"至少{required_top3_support}個模型列入前3":len(top3)>=required_top3_support,
+            f"候選專屬走步樣本至少{minimum_candidate_samples}期":samples>=minimum_candidate_samples,
+            "候選走步95%下限高於公平基準":lower>fair_probability,
+        }
+        probability_strength=(float(ms[number-1])-probability_floor)/probability_span
+        rank_stability=max(0.0,1-(statistics.mean(model_ranks.values())-1)/48)
+        evidence_strength=min(1.0,lower/fair_probability) if fair_probability else 0.0
+        decision_score=100*(.30*probability_strength+.25*weighted_top9+.20*weighted_top3+.15*rank_stability+.10*evidence_strength)
+        candidate_tournament.append({
+            "number":number,
+            "probability_rank":probability_positions[number],
+            "calibrated_probability":round(float(ms[number-1]),6),
+            "model_top9_support":len(top9),
+            "weighted_top9_support_pct":round(weighted_top9*100,2),
+            "model_top3_support":len(top3),
+            "weighted_top3_support_pct":round(weighted_top3*100,2),
+            "average_model_rank":round(float(statistics.mean(model_ranks.values())),2),
+            "walk_forward_samples":samples,
+            "walk_forward_hits":hits,
+            "walk_forward_hit_rate":round(rate,6),
+            "walk_forward_wilson_95_lower":round(lower,6),
+            "decision_score":round(decision_score,6),
+            "checks":checks,
+            "high_confidence_passed":all(checks.values()),
+        })
+    eligible=[item for item in candidate_tournament if item["high_confidence_passed"]]
+    ordered_candidates=sorted(candidate_tournament,key=lambda item:(item["high_confidence_passed"],item["decision_score"],item["calibrated_probability"]),reverse=True)
+    strongest=(eligible and max(eligible,key=lambda item:(item["decision_score"],item["calibrated_probability"]))["number"]) or probability_champion
+    strongest_evidence=next(item for item in candidate_tournament if item["number"]==strongest)
+    decision_rank=[strongest]+[number for number in probability_rank if number!=strongest]
     top9_support=[name for name in main_bt["names"] if strongest in (np.argsort(current_models[name])[::-1]+1)[:9]]
     top3_support=[name for name in main_bt["names"] if strongest in (np.argsort(current_models[name])[::-1]+1)[:3]]
     weighted_support=sum(main_bt["weights"][name] for name in top9_support)
-    fair_probability=6/49
-    required_model_support=max(7,math.ceil(len(main_bt["names"])*.60))
-    confidence_checks={
-        "發布守門通過":gate,
-        "校準機率高於公平基準":float(ms[strongest-1])>fair_probability,
-        f"至少{required_model_support}個模型列入前9":len(top9_support)>=required_model_support,
-        "加權模型共識至少65%":weighted_support>=.65,
-        "近60期前9覆蓋優於隨機":main_bt["first_hit_rank_audit"]["60"]["within_9_rate"]>=main_bt["within9_random_baseline"],
-        "近120期平均命中優於隨機":main_bt["ensemble_recent_hits"]["120"]>=main_random,
-        "第一名分數嚴格高於第二名":float(ms[rank[0]-1])>float(ms[rank[1]-1])
+    ordered_eligible=sorted(eligible,key=lambda item:(item["decision_score"],item["calibrated_probability"]),reverse=True)
+    # 只有一碼通過全部守門時，本身即為唯一合格者；兩碼以上才比較決策分差。
+    score_gap=(strongest_evidence["decision_score"]-ordered_eligible[1]["decision_score"]) if len(ordered_eligible)>1 else (1.0 if ordered_eligible else 0.0)
+    main_bt["confidence_tournament"]={
+        "rule":"49碼全部接受14模組現況共識、候選專屬520期走步樣本與95% Wilson下限競賽；通過全部守門者再按綜合決策分數排序",
+        "probability_champion":probability_champion,
+        "confidence_champion":strongest,
+        "high_confidence_found":bool(eligible),
+        "candidate_count":len(candidate_tournament),
+        "passed_numbers":[item["number"] for item in ordered_eligible],
+        "minimum_candidate_samples":minimum_candidate_samples,
+        "required_top9_models":required_model_support,
+        "required_top3_models":required_top3_support,
+        "winner":strongest_evidence,
+        "top_candidates":ordered_candidates[:9],
     }
-    super_consensus=all(confidence_checks.values())
-    main_bt["confidence_audit"]={"number":strongest,"label":"超高共識・本期唯一最強推薦" if super_consensus else "觀察級・本期唯一最強排序（未達超高共識）","super_consensus":super_consensus,"calibrated_probability":round(float(ms[strongest-1]),6),"fair_probability":round(fair_probability,6),"relative_lift_pct":round((float(ms[strongest-1])/fair_probability-1)*100,2),"score_gap_to_second":round(float(ms[rank[0]-1]-ms[rank[1]-1]),8),"model_top9_support":len(top9_support),"required_model_support":required_model_support,"model_top3_support":len(top3_support),"weighted_support_pct":round(weighted_support*100,2),"checks":confidence_checks,"warning":"超高共識代表多項模型邏輯一致，不代表必中；六合彩單號公平基準仍約12.24%。未通過守門時只列觀察排序，不得冒充高信心推薦。"}
+    confidence_checks={
+        **strongest_evidence["checks"],
+        "全候選競賽決策分數唯一第1":score_gap>0,
+        "整體模型發布守門通過":gate,
+    }
+    high_confidence_candidate=bool(strongest_evidence["high_confidence_passed"] and score_gap>0)
+    super_consensus=high_confidence_candidate and gate
+    label=("超高共識・本期唯一最強推薦" if super_consensus else ("全模組高信心候選・實戰認證累積中" if high_confidence_candidate else "觀察級・本期唯一最強排序（未達高信心守門）"))
+    main_bt["confidence_audit"]={"number":strongest,"label":label,"high_confidence_candidate":high_confidence_candidate,"super_consensus":super_consensus,"calibrated_probability":round(float(ms[strongest-1]),6),"fair_probability":round(fair_probability,6),"relative_lift_pct":round((float(ms[strongest-1])/fair_probability-1)*100,2),"score_gap_to_second":round(score_gap,6),"probability_champion":probability_champion,"probability_rank":probability_positions[strongest],"model_top9_support":len(top9_support),"required_model_support":required_model_support,"model_top3_support":len(top3_support),"weighted_support_pct":round(weighted_support*100,2),"candidate_walk_forward_samples":strongest_evidence["walk_forward_samples"],"candidate_walk_forward_hits":strongest_evidence["walk_forward_hits"],"candidate_walk_forward_hit_rate":strongest_evidence["walk_forward_hit_rate"],"candidate_wilson_95_lower":strongest_evidence["walk_forward_wilson_95_lower"],"checks":confidence_checks,"warning":"高信心表示全49碼候選競賽的模型共識與候選專屬走步證據通過，不代表必中；單號公平基準仍約12.24%，實戰認證必須繼續累積。"}
 
     model_groups={
         "長短期頻率":["bayes_24","bayes_60","bayes_150","bayes_360"],
@@ -347,8 +428,8 @@ def analyze(draws: list[Draw]) -> dict:
         "520期逐期向前走步驗證":main_bt["rounds"]==520,
         "頻率軌跡週期拖牌模組全部執行":all(name in current_models for names in model_groups.values() for name in names),
         "每期只使用當時以前資料":all(row["date"]==draws[len(draws)-len(main_bt["rows"])+i].draw_date for i,row in enumerate(main_bt["rows"])),
-        "候選號碼1至49完整排序":len(rank)==49 and len(set(rank))==49,
-        "第一名分數嚴格高於第二名":float(ms[rank[0]-1])>float(ms[rank[1]-1]),
+        "候選號碼1至49完整排序":len(decision_rank)==49 and len(set(decision_rank))==49,
+        "全候選競賽決策分數唯一第1":score_gap>0,
         "單一模型權重不超過22%":max(main_bt["weights"].values())<=.22,
     }
     main_bt["trajectory_audit"]={
@@ -369,9 +450,13 @@ def analyze(draws: list[Draw]) -> dict:
         "certified_90_accuracy":False,
         "certification_rule":"只承認開獎前封存且逐期獨立結算的命中率；不得用前九、回填或重複快照冒充獨支90%準確率",
     }
-    main_bt["recommendation_tiers"]={"A_唯一最強":[strongest],"B_高信心前三":rank[:3],"C_核心前九":rank[:9],"D_次高防守":rank[9:18],"E_低機率暫避":sorted(rank[-10:])}
-    main_bt["strongest_single_audit"]={"number":rank[0],"calibrated_probability":round(float(ms[rank[0]-1]),6),"selection_rule":"14個頻率、軌跡、週期與拖牌模型依30／120／360期成績、校準誤差與連續失誤重新配權後，取校準機率唯一第1名","based_on_period":draws[-1].period,"based_on_date":draws[-1].draw_date}
-    return {"system":"香港六合彩新世代鐵律預測系統","engine":"marksix_cleanroom_ensemble_v6_trajectory_audit","generated_at":date.today().isoformat(),"history":{"count":len(draws),"first":draws[0].draw_date,"latest":draws[-1].draw_date,"latest_period":draws[-1].period},"latest_draw":{"period":draws[-1].period,"date":draws[-1].draw_date,"main":draws[-1].main,"special":draws[-1].special},"target_date":next_draw(draws[-1].draw_date,draws),"main_rank":[{"rank":i+1,"number":n,"probability":round(float(ms[n-1]),6)} for i,n in enumerate(rank)],"special_rank":[{"rank":i+1,"number":n,"probability":round(float(ss[n-1]),6)} for i,n in enumerate(srank)],"packs":{"最強單支":rank[:1],"二中一":rank[:2],"三中一":rank[:3],"五中二":rank[:5],"九中三":rank[:9],"主攻12碼":rank[:12],"防守18碼":rank[:18]},"special_packs":{"最強單支":srank[:1],"三碼觀察":srank[:3]},"avoid":{"五不中":sorted(rank[-5:]),"十不中":sorted(rank[-10:]),"十五不中":sorted(rank[-15:])},"suggested_sets":build_sets(ms),"rules":{"range":"1–49","main_numbers":6,"extra_numbers":1,"unit_bet_hkd":10,"prizes":{"一獎":"6個正選號碼","二獎":"5個正選號碼＋特別號","三獎":"5個正選號碼","四獎":"4個正選號碼＋特別號（固定HK$9,600）","五獎":"4個正選號碼（固定HK$640）","六獎":"3個正選號碼＋特別號（固定HK$320）","七獎":"3個正選號碼（固定HK$40）"}},"backtest":{"main":main_bt,"special":special_bt},"release_gate":{"passed":gate,"publish_mode":"超高共識推薦" if gate else "觀察級排序","rule":"預測信心守門與開獎資料同步分離；未達門檻只降級標示，絕不可阻斷最新資料更新","main_edge":main_bt["logloss_edge"],"special_edge":special_bt["logloss_edge"],"main_avg_hits":main_bt["avg_hits"],"main_random_hits":round(main_random,4),"special_avg_hits":special_bt["avg_hits"],"special_random_hits":round(special_random,4),"max_main_weight":max(main_bt["weights"].values())},"operational_policy":{"data_sync_independent":True,"model_gate_blocks_data":False,"failed_gate_action":"保留最新資料、降級標示、啟動滾動檢討"},"notice":"歷史資料可用來檢測偏差與比較模型，但不能把未通過獨立封存驗證的軌跡宣稱為確定規律。本系統只發布可稽核的機率排序，不保證中獎。請量力而為，未滿18歲不得投注。"}
+    main_bt["recommendation_tiers"]={"A_唯一最強":[strongest],"B_高信心前三":decision_rank[:3],"C_核心前九":decision_rank[:9],"D_次高防守":decision_rank[9:18],"E_低機率暫避":sorted(probability_rank[-10:])}
+    provisional_target=next_draw(draws[-1].draw_date,draws)
+    main_bt["confidence_tournament"]["target_date"]=provisional_target
+    main_bt["confidence_audit"]["target_date"]=provisional_target
+    main_bt["trajectory_audit"]["target_date"]=provisional_target
+    main_bt["strongest_single_audit"]={"number":strongest,"calibrated_probability":round(float(ms[strongest-1]),6),"selection_rule":"49個候選全部接受14個頻率、軌跡、週期、拖牌與滯後模組，再以候選專屬520期走步樣本及95% Wilson下限守門，取通過者的綜合決策分數第1名","based_on_period":draws[-1].period,"based_on_date":draws[-1].draw_date,"target_date":provisional_target,"probability_champion":probability_champion}
+    return {"system":"香港六合彩新世代鐵律預測系統","engine":"marksix_cleanroom_ensemble_v7_all_candidate_confidence","generated_at":date.today().isoformat(),"history":{"count":len(draws),"first":draws[0].draw_date,"latest":draws[-1].draw_date,"latest_period":draws[-1].period},"latest_draw":{"period":draws[-1].period,"date":draws[-1].draw_date,"main":draws[-1].main,"special":draws[-1].special},"target_date":provisional_target,"main_rank":[{"rank":i+1,"number":n,"probability":round(float(ms[n-1]),6)} for i,n in enumerate(probability_rank)],"decision_rank":[{"rank":i+1,"number":n,"probability":round(float(ms[n-1]),6),"decision_score":next(item["decision_score"] for item in candidate_tournament if item["number"]==n)} for i,n in enumerate(decision_rank)],"special_rank":[{"rank":i+1,"number":n,"probability":round(float(ss[n-1]),6)} for i,n in enumerate(srank)],"packs":{"最強單支":[strongest],"機率排序第1":[probability_champion],"二中一":decision_rank[:2],"三中一":decision_rank[:3],"五中二":decision_rank[:5],"九中三":decision_rank[:9],"主攻12碼":decision_rank[:12],"防守18碼":decision_rank[:18]},"special_packs":{"最強單支":srank[:1],"三碼觀察":srank[:3]},"avoid":{"五不中":sorted(probability_rank[-5:]),"十不中":sorted(probability_rank[-10:]),"十五不中":sorted(probability_rank[-15:])},"suggested_sets":build_sets(ms),"rules":{"range":"1–49","main_numbers":6,"extra_numbers":1,"unit_bet_hkd":10,"prizes":{"一獎":"6個正選號碼","二獎":"5個正選號碼＋特別號","三獎":"5個正選號碼","四獎":"4個正選號碼＋特別號（固定HK$9,600）","五獎":"4個正選號碼（固定HK$640）","六獎":"3個正選號碼＋特別號（固定HK$320）","七獎":"3個正選號碼（固定HK$40）"}},"backtest":{"main":main_bt,"special":special_bt},"release_gate":{"passed":gate,"publish_mode":"超高共識推薦" if gate else ("全模組高信心候選・實戰認證累積中" if high_confidence_candidate else "觀察級排序"),"rule":"預測信心守門與開獎資料同步分離；未達門檻只降級標示，絕不可阻斷最新資料更新","main_edge":main_bt["logloss_edge"],"special_edge":special_bt["logloss_edge"],"main_avg_hits":main_bt["avg_hits"],"main_random_hits":round(main_random,4),"special_avg_hits":special_bt["avg_hits"],"special_random_hits":round(special_random,4),"max_main_weight":max(main_bt["weights"].values())},"operational_policy":{"data_sync_independent":True,"model_gate_blocks_data":False,"failed_gate_action":"保留最新資料、降級標示、啟動滾動檢討"},"notice":"歷史資料可用來檢測偏差與比較模型，但不能把未通過獨立封存驗證的軌跡宣稱為確定規律。本系統只發布可稽核的機率排序，不保證中獎。請量力而為，未滿18歲不得投注。"}
 
 if __name__=="__main__":
     result=analyze(load_draws())

@@ -43,17 +43,21 @@ def main():
     audit=analysis["backtest"]["main"].get("module_review",[])
     strongest=analysis["backtest"]["main"].get("strongest_single_audit",{})
     add("all_modules_rolling_reviewed",len(audit)==len(analysis["backtest"]["main"]["names"]) and all("decision" in x and "recent_120_avg_hits" in x for x in audit),f"{len(audit)} modules reviewed")
-    add("strongest_single_unique",strongest.get("number")==analysis["packs"]["最強單支"][0] and analysis["main_rank"][0]["probability"]>analysis["main_rank"][1]["probability"],json.dumps(strongest,ensure_ascii=False))
+    tournament=analysis["backtest"]["main"].get("confidence_tournament",{})
+    winner=tournament.get("winner",{})
+    add("all_candidate_confidence_tournament",tournament.get("candidate_count")==49 and tournament.get("confidence_champion")==analysis["packs"]["最強單支"][0] and winner.get("number")==analysis["packs"]["最強單支"][0] and isinstance(winner.get("checks"),dict) and len(winner.get("checks",{}))>=6,json.dumps(tournament,ensure_ascii=False))
+    add("strongest_single_unique",strongest.get("number")==analysis["packs"]["最強單支"][0] and strongest.get("target_date")==analysis["target_date"] and analysis.get("decision_rank",[])[0].get("number")==analysis["packs"]["最強單支"][0] and analysis.get("decision_rank",[])[0].get("decision_score",0)>0,json.dumps(strongest,ensure_ascii=False))
     confidence=analysis["backtest"]["main"].get("confidence_audit",{})
     add("strongest_multi_logic_audit",confidence.get("number")==analysis["packs"]["最強單支"][0] and len(confidence.get("checks",{}))>=7 and all(isinstance(v,bool) for v in confidence.get("checks",{}).values()),json.dumps(confidence,ensure_ascii=False))
     trajectory=analysis["backtest"]["main"].get("trajectory_audit",{})
     required_models={"lagged_drag","interval_cycle","lag_trace"}
-    add("daily_single_trajectory_audit",trajectory.get("daily_strongest")==analysis["packs"]["最強單支"][0] and trajectory.get("strict_computation_passed") is True and trajectory.get("walk_forward_rounds")==520 and required_models.issubset(set(analysis["backtest"]["main"].get("names",[]))) and len(trajectory.get("module_groups",[]))==5,json.dumps(trajectory,ensure_ascii=False))
+    add("daily_single_trajectory_audit",trajectory.get("daily_strongest")==analysis["packs"]["最強單支"][0] and trajectory.get("target_date")==analysis["target_date"] and trajectory.get("strict_computation_passed") is True and trajectory.get("walk_forward_rounds")==520 and required_models.issubset(set(analysis["backtest"]["main"].get("names",[]))) and len(trajectory.get("module_groups",[]))==5,json.dumps(trajectory,ensure_ascii=False))
     add("single_accuracy_not_inflated",trajectory.get("walk_forward_single_hits")==sum(int(row.get("single_hit",0)) for row in analysis["backtest"]["main"]["rows"]) and trajectory.get("certified_90_accuracy")==bool(trajectory.get("sealed_independent_draws",0)>=30 and trajectory.get("sealed_wilson_95_lower",0)>=.90),json.dumps({"single_rate":trajectory.get("walk_forward_single_hit_rate"),"sealed_rate":trajectory.get("sealed_single_hit_rate"),"wilson_lower":trajectory.get("sealed_wilson_95_lower"),"certified_90":trajectory.get("certified_90_accuracy")},ensure_ascii=False))
     live=analysis.get("live_single_audit",{})
     add("live_single_accuracy_audit",live.get("independent_draws",0)>0 and live.get("settled_snapshots",0)>=live.get("independent_draws",0) and live.get("duplicate_snapshots_excluded",0)==live.get("settled_snapshots",0)-live.get("independent_draws",0),json.dumps(live,ensure_ascii=False))
     insufficient=live.get("independent_draws",0)<live.get("minimum_independent_samples",30)
-    add("no_overconfident_single_label",not insufficient or (not confidence.get("super_consensus") and "樣本累積中" in confidence.get("label","")),f"independent={live.get('independent_draws')}; label={confidence.get('label')}")
+    scoped_high_confidence=confidence.get("high_confidence_candidate") is True and "高信心候選" in confidence.get("label","") and "實戰認證累積中" in confidence.get("label","") and trajectory.get("certified_90_accuracy") is False
+    add("no_overconfident_single_label",not insufficient or (not confidence.get("super_consensus") and ("樣本累積中" in confidence.get("label","") or scoped_high_confidence)),f"independent={live.get('independent_draws')}; label={confidence.get('label')}")
     proof=analysis.get("recalculation_proof",{})
     add("recalculation_proof",proof.get("current_period")==analysis["latest_draw"]["period"] and proof.get("current_single")==analysis["packs"]["最強單支"][0] and bool(proof.get("completed_at")) and isinstance(proof.get("data_changed"),bool) and isinstance(proof.get("single_changed"),bool),json.dumps(proof,ensure_ascii=False))
     repeat=analysis.get("consecutive_single_audit",{})
@@ -75,7 +79,9 @@ def main():
     css=(ROOT/"site/style.css").read_text(encoding="utf-8")
     service_worker=(ROOT/"site/service-worker.js").read_text(encoding="utf-8")
     add("interface_539_spec",all(label in page for label in navigation) and 'class="band strong' in page and 'class="report-details"' in page and all(marker in css for marker in ("#f3f4f6","#7f1017","repeat(6,minmax(0,1fr))",".report-details")),"six 539 categories + red header/nav + band cards + collapsible full calculations")
-    add("next_draw_prediction_first",all(x in page for x in ("下期正式預測",f"目標開獎日：{analysis['target_date']}","每日超強獨支・嚴格運算第1名","下期前三排序","下期核心前九","下期主攻12碼","連莊合理性驗證","跨不同依據期別重新運算","軌跡・週期・拖牌多重驗證","90%準確度認證")) and page.index("下期正式預測")<page.index("更新與重算證據") and page.index("下期正式預測")<page.index("終極獨支・封存實戰準確度"),"next target, daily strict single, trajectory audit, basis, main packs and repeat-number rationale are the first prediction block")
+    target=analysis["target_date"]
+    add("ultimate_single_date_bound",all(x in page for x in (f"終極獨支・適用開獎日 {target}",f"{target} 開獎・",f"{target} 終極獨支・全系統守門證據",f"本期終極獨支・{target}",f"{target} 清楚分層推薦")) and all(section.get("target_date")==target for section in (strongest,confidence,trajectory,tournament)),"every current ultimate single carries target draw date and basis")
+    add("next_draw_prediction_first",all(x in page for x in ("下期正式預測",f"目標開獎日：{target}",f"終極獨支・適用開獎日 {target}","下期前三排序","下期核心前九","下期主攻12碼","連莊合理性驗證","軌跡・週期・拖牌多重驗證","90%準確度認證","49碼全候選競賽")) and page.index("下期正式預測")<page.index("更新與重算證據") and page.index("下期正式預測")<page.index("封存實戰準確度"),"next target, dated ultimate single, all-candidate audit, basis and main packs are the first prediction block")
     add("version_timezone_explicit",version.get("timezone")=="Asia/Taipei" and "+08:00" in version.get("updated_at","") and "雲端戰報產生" in page,"cloud generation time is explicit Asia/Taipei")
     add("resilient_service_worker","Promise.allSettled" in service_worker and ".addAll(" not in service_worker and "request.method!=='GET'" in service_worker,"one failed asset cannot abort service-worker installation")
     add("version_poll_decoupled","async function fetchVersion" in app and "async function checkVersion(){try{const version=await fetchVersion()" in app,"background version polling does not depend on analysis fetch")
@@ -90,7 +96,8 @@ def main():
     found={k:v for k,v in found.items() if v}; add("independent_branding",not found,json.dumps(found,ensure_ascii=False))
     critical_passed=all(x["passed"] for x in checks if x["severity"]=="critical")
     prediction_gate_passed=all(x["passed"] for x in checks if x["severity"]=="advisory")
-    report={"system":analysis["system"],"generated_at":analysis["generated_at"],"passed":critical_passed,"operational_passed":critical_passed,"prediction_gate_passed":prediction_gate_passed,"status":"健康" if critical_passed and prediction_gate_passed else ("系統正常・預測觀察級" if critical_passed else "系統故障"),"latest_period":draws[-1].period,"latest_date":draws[-1].draw_date,"target_date":analysis["target_date"],"checks":checks}
+    mode_status=("健康" if prediction_gate_passed else ("系統正常・全模組高信心候選・實戰認證累積中" if confidence.get("high_confidence_candidate") else "系統正常・預測觀察級"))
+    report={"system":analysis["system"],"generated_at":analysis["generated_at"],"passed":critical_passed,"operational_passed":critical_passed,"prediction_gate_passed":prediction_gate_passed,"status":mode_status if critical_passed else "系統故障","latest_period":draws[-1].period,"latest_date":draws[-1].draw_date,"target_date":analysis["target_date"],"checks":checks}
     text=json.dumps(report,ensure_ascii=False,indent=2)
     for base in ("reports","site","docs"): (ROOT/base/"self_test_report.json").write_text(text,encoding="utf-8")
     print(text); return 0 if critical_passed else 1
