@@ -13,6 +13,15 @@ from v9 import watchdog
 
 
 class OfficialRebuildTests(unittest.TestCase):
+    def test_active_entrypoints_do_not_load_legacy_data(self):
+        root = Path(__file__).resolve().parents[1]
+        for name in ("engine.py", "update.py", "watchdog.py", "verify.py",
+                     "health_check.py", "daily_integrity_audit.py", "report.py"):
+            source = (root / name).read_text(encoding="utf-8")
+            self.assertNotIn("official_marksix.csv", source, name)
+            self.assertNotIn("prediction_history.json", source, name)
+            self.assertIn("v9.", source, name)
+
     def test_official_history_not_legacy_csv(self):
         draws = load_verified()
         self.assertGreaterEqual(len(draws), 3000)
