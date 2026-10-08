@@ -2979,7 +2979,7 @@
           "first_hit_rank": 2,
           "within_9": true,
           "brier": 0.10762391364756094,
-          "logloss": 0.37257104785217665
+          "logloss": 0.3725710478521767
         },
         {
           "period": "23/103",
@@ -3321,7 +3321,7 @@
           "first_hit_rank": 9,
           "within_9": true,
           "brier": 0.10759914201298583,
-          "logloss": 0.37243915397876765
+          "logloss": 0.3724391539787677
         },
         {
           "period": "23/121",
@@ -3815,7 +3815,7 @@
           "first_hit_rank": 10,
           "within_9": false,
           "brier": 0.10792799622651272,
-          "logloss": 0.37398952856997175
+          "logloss": 0.3739895285699717
         },
         {
           "period": "24/001 SBD",
@@ -6398,7 +6398,7 @@
           ],
           "first_hit_rank": 19,
           "within_9": false,
-          "brier": 0.10801210068489717,
+          "brier": 0.10801210068489718,
           "logloss": 0.37437427020394476
         },
         {
@@ -6836,7 +6836,7 @@
           "first_hit_rank": 9,
           "within_9": true,
           "brier": 0.10762804184283829,
-          "logloss": 0.37255550971276385
+          "logloss": 0.37255550971276374
         },
         {
           "period": "25/020",
@@ -7843,7 +7843,7 @@
           "first_hit_rank": 12,
           "within_9": false,
           "brier": 0.1075045045478766,
-          "logloss": 0.3720096714988038
+          "logloss": 0.3720096714988039
         },
         {
           "period": "25/073",
@@ -10750,7 +10750,7 @@
           "first_hit_rank": 1,
           "within_9": true,
           "brier": 0.10749940139747634,
-          "logloss": 0.3720167497090823
+          "logloss": 0.37201674970908233
         },
         {
           "period": "26/092",
@@ -14307,7 +14307,7 @@
           "first_hit_rank": 33,
           "within_9": false,
           "brier": 0.020017539039151228,
-          "logloss": 0.1002474524590244
+          "logloss": 0.10024745245902439
         },
         {
           "period": "24/022",
@@ -19385,7 +19385,7 @@
   },
   "update_status": "最新資料已完成抓取、結算、重算與手機同步",
   "recalculation_proof": {
-    "completed_at": "2026-10-08T21:49:17+08:00",
+    "completed_at": "2026-10-08T21:51:34+08:00",
     "previous_period": "26/107",
     "current_period": "26/107",
     "current_draw_date": "2026-10-08",
