@@ -20,6 +20,8 @@ def write_all(payload: dict) -> None:
 
 
 def main() -> int:
+    from v9.verify import verify as verify_official_v9
+    return verify_official_v9()
     now = datetime.now(HK)
     raw = list(csv.DictReader((ROOT / "data/official_marksix.csv").open(encoding="utf-8-sig", newline="")))
     draws = load_draws()
@@ -81,6 +83,5 @@ def main() -> int:
 
 
 if __name__ == "__main__":
-    if hasattr(sys.stdout, "reconfigure"):
-        sys.stdout.reconfigure(encoding="utf-8")
-    raise SystemExit(main())
+    from v9.verify import verify as verify_official_v9
+    print(json.dumps(verify_official_v9(), ensure_ascii=False, indent=2))

@@ -2,6 +2,11 @@ name: 香港六合彩新核心自動更新
 on:
   push:
     branches: [main]
+    paths-ignore:
+      - 'data/**'
+      - 'reports/**'
+      - 'site/**'
+      - 'docs/**'
   schedule:
     # 每小時健康檢查，涵蓋常態及節日／金多寶臨時開彩日。
     - cron: "0 * * * *"
@@ -24,21 +29,19 @@ jobs:
       - uses: actions/setup-python@v7
         with: {python-version: "3.12"}
       - run: pip install numpy==2.3.5
-      - name: 抓取、重算、故障自修復（最多4次）
-        run: python watchdog.py
-      - name: 每日資料完整性稽核
-        run: python daily_integrity_audit.py
-      - name: 發布前雙軌檢測（資料故障阻擋、模型未達門檻降級）
-        run: python verify.py
-      - name: 全系統健康檢測
-        run: python health_check.py
+      - name: 官方來源抓取、全新模型重算與自修復
+        run: python -m v9.watchdog
+      - name: 官方來源、封存鏈與手機戰報完整稽核
+        run: python -m v9.verify
+      - name: 新核心單元測試
+        run: python -m unittest tests.test_v9 -v
       - name: 成功後同步完整手機雲端
         if: success()
         run: |
           git config user.name "hk-marksix-engine-bot"
           git config user.email "actions@github.com"
           git add data reports site docs
-          git diff --cached --quiet || (git commit -m "六合彩新核心開獎後自動更新" && git push)
+          git diff --cached --quiet || (git commit -m "六合彩官方資料新核心自動更新 [skip ci]" && git push)
       - name: 失敗時保留雲端故障證據
         if: failure()
         env:
@@ -54,5 +57,5 @@ jobs:
           PY
           git config user.name "hk-marksix-repair-bot"
           git config user.email "actions@github.com"
-          git add reports/repair_status.json site/repair_status.json docs/repair_status.json reports/cloud_failure_status.json site/cloud_failure_status.json docs/cloud_failure_status.json
+          git add reports/repair_status.json site/repair_status.json docs/repair_status.json reports/health_status.json site/health_status.json docs/health_status.json reports/self_test_report.json site/self_test_report.json docs/self_test_report.json reports/cloud_failure_status.json site/cloud_failure_status.json docs/cloud_failure_status.json
           git diff --cached --quiet || (git commit -m "記錄六合彩雲端故障並啟動救援" && git push)

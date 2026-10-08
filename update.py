@@ -339,6 +339,8 @@ def apply_consecutive_single_audit(result: dict, history: list[dict]) -> dict:
     return audit
 
 def main():
+    from v9.pipeline import run as run_official_v9
+    return run_official_v9()
     previous_target=None
     previous_analysis={}
     previous_report=ROOT/"reports"/"latest_analysis.json"
@@ -403,4 +405,6 @@ def main():
     }
     history=settle_and_save(result); apply_live_single_audit(result,history); apply_consecutive_single_audit(result,history); build_reports(result,history)
     print(json.dumps({"data":source_status,"latest":result["latest_draw"],"target":result["target_date"],"target_source":target_source,"gate":result["release_gate"]},ensure_ascii=False,indent=2))
-if __name__=="__main__": main()
+if __name__=="__main__":
+    from v9.pipeline import run as run_official_v9
+    print(json.dumps(run_official_v9(), ensure_ascii=False, indent=2))

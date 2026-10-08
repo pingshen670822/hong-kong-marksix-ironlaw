@@ -1,0 +1,21 @@
+{
+  "source": "香港賽馬會官方 GraphQL 已公布攪珠結果",
+  "endpoint": "https://info.cld.hkjc.com/graphql/base/",
+  "retrieved_at_utc": "2026-10-08T16:42:49+00:00",
+  "count": 3323,
+  "first": "2003-01-02",
+  "latest": "2026-10-08",
+  "latest_period": "26/107",
+  "sha256": "e9b7d723a88af615ca3a720bc640aeb58590904e792f08d35e85fa9017578a7a",
+  "evidence": {
+    "mode": "official_recent_refresh",
+    "recent_official_results": 92,
+    "previously_verified": 3323
+  },
+  "history_bootstrap": {
+    "mode": "full_official_bootstrap",
+    "queried_months_from": "2003-01",
+    "queried_months_to": "2026-10"
+  },
+  "legacy_data_used_for_model": false
+}

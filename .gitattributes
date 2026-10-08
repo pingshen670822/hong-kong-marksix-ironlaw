@@ -1,0 +1,3 @@
+data/hkjc_verified_v9.csv text eol=lf
+data/hkjc_verified_v9_manifest.json text eol=lf
+data/v9_forecast_events.jsonl text eol=lf

@@ -32,6 +32,8 @@ def stale_after_two_hours() -> tuple[bool, str]:
 
 
 def main() -> int:
+    from v9.watchdog import main as official_v9_watchdog
+    return official_v9_watchdog()
     errors=[]
     for attempt in range(1,5):
         updated=run("update.py")
@@ -53,4 +55,5 @@ def main() -> int:
 
 
 if __name__=="__main__":
-    raise SystemExit(main())
+    from v9.watchdog import main as official_v9_watchdog
+    raise SystemExit(official_v9_watchdog())

@@ -14,6 +14,8 @@ class date(_date):
 
 def sha(p): return hashlib.sha256(p.read_bytes()).hexdigest()
 def main():
+    from v9.verify import verify as verify_official_v9
+    return verify_official_v9()
     checks=[]
     def add(name,ok,detail,severity="critical"): checks.append({"name":name,"passed":bool(ok),"severity":severity,"detail":detail})
     draws=load_draws(); analysis=json.loads((ROOT/"reports/latest_analysis.json").read_text(encoding="utf-8"))
@@ -115,4 +117,6 @@ def main():
     text=json.dumps(report,ensure_ascii=False,indent=2)
     for base in ("reports","site","docs"): (ROOT/base/"self_test_report.json").write_text(text,encoding="utf-8")
     print(text); return 0 if critical_passed else 1
-if __name__=="__main__": sys.exit(main())
+if __name__=="__main__":
+    from v9.verify import verify as verify_official_v9
+    print(json.dumps(verify_official_v9(), ensure_ascii=False, indent=2))

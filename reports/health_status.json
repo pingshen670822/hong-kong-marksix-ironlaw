@@ -1,52 +1,10 @@
 {
-  "system": "香港六合彩新世代鐵律預測系統",
-  "checked_at": "2026-10-08T22:26:06+08:00",
   "healthy": true,
-  "status": "系統健康",
-  "prediction_mode": "觀察級・連開驗證未通過",
+  "status": "官方資料校驗通過；預測僅觀察級",
+  "checked_at": "2026-10-09T00:42:49+08:00",
   "latest_period": "26/107",
   "latest_date": "2026-10-08",
-  "target_date": "2026-10-10",
-  "checks": [
-    {
-      "name": "latest_draw_matches_database",
-      "passed": true,
-      "detail": "26/107 2026-10-08"
-    },
-    {
-      "name": "data_recency",
-      "passed": true,
-      "detail": "age=0; overdue=False; target=2026-10-10"
-    },
-    {
-      "name": "source_fetch_available",
-      "passed": true,
-      "detail": "{\"draws\": 4395, \"primary_rows\": 100, \"fallback_rows\": 107, \"crosschecked_dates\": 100, \"latest_source\": \"備援來源已發布，主來源待核對\", \"latest_crosschecked\": false, \"source_errors\": [], \"schedule_error\": null}"
-    },
-    {
-      "name": "operational_self_test",
-      "passed": true,
-      "detail": "系統正常・預測觀察級"
-    },
-    {
-      "name": "cloud_outputs_identical",
-      "passed": true,
-      "detail": "reports/site/docs"
-    },
-    {
-      "name": "all_cloud_json_readable",
-      "passed": true,
-      "detail": "21 JSON files"
-    },
-    {
-      "name": "required_outputs_nonempty",
-      "passed": true,
-      "detail": "30 required files"
-    },
-    {
-      "name": "no_stale_atomic_files",
-      "passed": true,
-      "detail": "none"
-    }
-  ]
+  "verified_rows": 3323,
+  "source": "HKJC GraphQL",
+  "legacy_data_used": false
 }
