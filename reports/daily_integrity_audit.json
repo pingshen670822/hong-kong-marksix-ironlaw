@@ -1,6 +1,6 @@
 {
   "system": "香港六合彩新世代鐵律預測系統",
-  "checked_at": "2026-10-08T21:59:29+08:00",
+  "checked_at": "2026-10-08T22:24:19+08:00",
   "passed": true,
   "latest_period": "26/107",
   "latest_date": "2026-10-08",
@@ -49,7 +49,7 @@
     {
       "name": "prediction_snapshot_exists",
       "passed": true,
-      "detail": "26/107 marksix_cleanroom_ensemble_v7_all_candidate_confidence"
+      "detail": "26/107 marksix_cleanroom_ensemble_v8_replayed_decision"
     }
   ]
 }

@@ -41,6 +41,14 @@ class EngineTest(unittest.TestCase):
         self.assertEqual(audit["hits"],1)
         self.assertFalse(result["release_gate"]["passed"])
         self.assertFalse(result["backtest"]["main"]["confidence_audit"]["super_consensus"])
+    def test_live_single_audit_does_not_inherit_old_engine_hits(self):
+        result={"engine":"v8","packs":{"最強單支":[31]},"release_gate":{"passed":True},"backtest":{"main":{"confidence_audit":{"super_consensus":True,"checks":{}}}}}
+        history=[{"engine":"v7","status":"settled","target_date":"2026-10-08","based_on_date":"2026-10-06","packs":{"最強單支":[31]},"actual":{"main":[18,19,24,31,40,44]}}]
+        audit=update.apply_live_single_audit(result,history)
+        self.assertEqual(audit["current_engine"],"v8")
+        self.assertEqual(audit["independent_draws"],0)
+        self.assertEqual(audit["hits"],0)
+        self.assertFalse(result["release_gate"]["passed"])
     def test_consecutive_single_requires_cross_period_model_support(self):
         confidence={"super_consensus":False,"checks":{},"score_gap_to_second":.01,"model_top9_support":8,"weighted_support_pct":72.0}
         result={"latest_draw":{"period":"26/106","date":"2026-10-06"},"target_date":"2026-10-08","packs":{"最強單支":[31]},"release_gate":{"passed":False,"model_passed":True,"live_single_passed":False},"backtest":{"main":{"names":[str(x) for x in range(9)],"confidence_audit":confidence}}}
@@ -51,7 +59,20 @@ class EngineTest(unittest.TestCase):
         audit=update.apply_consecutive_single_audit(result,history)
         self.assertTrue(audit["is_consecutive"])
         self.assertEqual(audit["streak"],2)
-        self.assertTrue(audit["reasonable_repeat_passed"])
+        self.assertGreaterEqual(audit["drawn_streak"],3)
+        self.assertFalse(audit["reasonable_repeat_passed"])
         self.assertFalse(audit["strong_recommendation_passed"])
         self.assertTrue(audit["previous_result_hit"])
+        self.assertIn("觀察級",result["backtest"]["main"]["confidence_audit"]["label"])
+    def test_candidate_evidence_uses_only_prior_decisions(self):
+        import numpy as np
+        scores=np.linspace(.115,.13,49)
+        predictions=np.tile(scores,(14,1))
+        names=[f"model_{index}" for index in range(14)]
+        weights=np.full(14,1/14)
+        before=engine.rank_all_candidates(scores,predictions,weights,names,[])
+        after=engine.rank_all_candidates(scores,predictions,weights,names,[{"single_number":49,"single_hit":1}])
+        self.assertEqual(before["winner"]["walk_forward_samples"],0)
+        self.assertEqual(after["winner"]["walk_forward_samples"],1)
+        self.assertFalse(after["winner"]["high_confidence_passed"])
 if __name__=="__main__": unittest.main()

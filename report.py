@@ -14,7 +14,7 @@ REPORTS = ROOT / "reports"
 SITE = ROOT / "site"
 DOCS = ROOT / "docs"
 HK = timezone(timedelta(hours=8))
-REPORT_SCHEMA_VERSION = "2026-10-07-daily-single-trajectory-audit-v9"
+REPORT_SCHEMA_VERSION = "2026-10-08-verified-decision-replay-v10"
 
 
 def e(value):
@@ -123,6 +123,14 @@ def build_reports(analysis_data, history):
         ["原機率集成", champion["champion"]["avg520"], champion["champion"]["recent60"], champion["champion"]["recent120"], f'{champion["champion"]["single520"]*100:.2f}%', f'{champion["champion"]["single120"]*100:.2f}%', champion["champion"]["logloss"]],
         ["獨支名次共識", champion["challenger"]["avg520"], champion["challenger"]["recent60"], champion["challenger"]["recent120"], f'{champion["challenger"]["single520"]*100:.2f}%', f'{champion["challenger"]["single120"]*100:.2f}%', champion["challenger"]["logloss"]],
     ]
+    replay = main_test["decision_replay"]
+    policy = main_test["policy_review"]
+    policy_labels = {"probability_top":"機率集成首位","candidate_tournament":"49碼候選競賽",
+                     "exclude_previous_draw":"排除上期開出號","avoid_three_draw_streak":"避開連開三期號"}
+    policy_rows = [[e(policy_labels.get(name,name)),f'{values["development_hits"]}/400',
+                    f'{values["evaluation_hits"]}/120',f'{values["total_hits"]}/520',
+                    "採用" if name==policy["selected"] else "未採用"]
+                   for name,values in policy["policies"].items()]
     low_rows = []
     for prediction in reversed(history):
         if prediction.get("status") != "settled":
@@ -147,6 +155,7 @@ def build_reports(analysis_data, history):
     recent5 = live.get("recent_5", {})
     recent10 = live.get("recent_10", {})
     latest_live = live.get("latest_result") or {}
+    latest_live_label = (f"{e(latest_live['target_date'])}・{int(latest_live['number']):02d} {'命中' if latest_live['hit'] else '未中'}" if latest_live else "現行核心尚無結算實戰")
     proof = analysis_data.get("recalculation_proof", {})
     proof_previous = proof.get("previous_single")
     proof_current = int(proof.get("current_single", confidence["number"]))
@@ -185,7 +194,7 @@ def build_reports(analysis_data, history):
 <div class="band tournament-audit">
   <div class="badge tournament-badge">49碼全候選競賽</div>
   <h2>{e(analysis_data['target_date'])} 終極獨支・全系統守門證據</h2>
-  <p><b>即時機率冠軍 {int(tournament.get('probability_champion',0)):02d}；{'全模組高信心冠軍 ' + f'{int(tournament["confidence_champion"]):02d}' if tournament.get('high_confidence_found') else '49碼沒有高信心合格者，僅顯示全模組決策分數觀察首位 ' + f'{int(confidence["number"]):02d}'}。</b> 不能把觀察排序冒充高信心推薦。</p>
+  <p><b>即時機率冠軍 {int(tournament.get('probability_champion',0)):02d}；{'全模組高信心冠軍 ' + f'{int(tournament["confidence_champion"]):02d}' if tournament.get('high_confidence_found') else '49碼沒有高信心合格者，目前發佈策略觀察首位 ' + f'{int(confidence["number"]):02d}'}。</b> 不能把觀察排序冒充高信心推薦。</p>
   <p class="note">{e(tournament.get('rule','49碼全候選驗證'))}</p>
   {table(['候選','即時機率名次','校準機率','前9模型共識','前3模型共識','候選專屬走步','高信心守門'], tournament_rows)}
 </div>'''
@@ -219,8 +228,8 @@ def build_reports(analysis_data, history):
     live_accuracy_block = f'''
 <div class="band live-audit">
   <h2>{e(analysis_data['target_date'])} 終極獨支・封存實戰準確度</h2>
-  <div class="grid"><div class="card primary"><div class="label">本期終極獨支・{e(analysis_data['target_date'])}</div><div class="number">{int(confidence['number']):02d}</div><div class="note">依據 {e(analysis_data['latest_draw']['date'])}／{e(analysis_data['latest_draw']['period'])}</div></div><div class="card"><div class="label">獨立開獎日</div><div class="value">{live_total}期</div><div class="note">強推薦門檻 {live_minimum}期</div></div><div class="card"><div class="label">實戰命中</div><div class="value">{live_hits}/{live_total}（{float(live.get('hit_rate', 0))*100:.1f}%）</div><div class="note">單號公平基準 {float(live.get('fair_single_rate', 6/49))*100:.2f}%</div></div><div class="card"><div class="label">近5期</div><div class="value">{int(recent5.get('hits',0))}/{int(recent5.get('draws',0))}（{float(recent5.get('hit_rate',0))*100:.1f}%）</div></div><div class="card"><div class="label">近10期</div><div class="value">{int(recent10.get('hits',0))}/{int(recent10.get('draws',0))}（{float(recent10.get('hit_rate',0))*100:.1f}%）</div></div><div class="card"><div class="label">最新封存結果</div><div class="value">{e(latest_live.get('target_date','—'))}・{int(latest_live.get('number',0)):02d} {'命中' if latest_live.get('hit') else '未中'}</div></div></div>
-  <p><b>結論：</b>歷史封存的原始快照共 {int(live.get('settled_snapshots',0))} 筆；同一目標日重複快照排除 {int(live.get('duplicate_snapshots_excluded',0))} 筆，僅按 {live_total} 個獨立開獎日計算。現行獨支 {int(live.get('current_number',confidence['number'])):02d} 的獨立實戰樣本只有 {int(live.get('current_number_samples',0))} 期／{int(live.get('current_number_hits',0))} 中，樣本不足，不能把單次命中包裝成已證實高準確。</p>
+  <div class="grid"><div class="card primary"><div class="label">本期終極獨支・{e(analysis_data['target_date'])}</div><div class="number">{int(confidence['number']):02d}</div><div class="note">依據 {e(analysis_data['latest_draw']['date'])}／{e(analysis_data['latest_draw']['period'])}</div></div><div class="card"><div class="label">獨立開獎日</div><div class="value">{live_total}期</div><div class="note">強推薦門檻 {live_minimum}期</div></div><div class="card"><div class="label">實戰命中</div><div class="value">{live_hits}/{live_total}（{float(live.get('hit_rate', 0))*100:.1f}%）</div><div class="note">單號公平基準 {float(live.get('fair_single_rate', 6/49))*100:.2f}%</div></div><div class="card"><div class="label">近5期</div><div class="value">{int(recent5.get('hits',0))}/{int(recent5.get('draws',0))}（{float(recent5.get('hit_rate',0))*100:.1f}%）</div></div><div class="card"><div class="label">近10期</div><div class="value">{int(recent10.get('hits',0))}/{int(recent10.get('draws',0))}（{float(recent10.get('hit_rate',0))*100:.1f}%）</div></div><div class="card"><div class="label">最新封存結果</div><div class="value">{latest_live_label}</div></div></div>
+  <p><b>結論：</b>僅計現行核心 {e(live.get('current_engine','—'))} 的開獎前封存快照共 {int(live.get('settled_snapshots',0))} 筆；同一目標日重複快照排除 {int(live.get('duplicate_snapshots_excluded',0))} 筆，僅按 {live_total} 個獨立開獎日計算。舊核心封存歷史保留但不轉作新核心成績。現行獨支 {int(live.get('current_number',confidence['number'])):02d} 的獨立實戰樣本只有 {int(live.get('current_number_samples',0))} 期／{int(live.get('current_number_hits',0))} 中，樣本不足，不能把單次命中包裝成已證實高準確。</p>
   <div class="sample-meter"><span style="width:{min(100,live_total/live_minimum*100) if live_minimum else 0:.1f}%"></span></div><p class="note">實戰樣本進度 {live_total}/{live_minimum}。全候選守門通過者可標示「全模組高信心候選」；未完成30期實戰與95%下限認證前，仍不得宣稱90%、必中或超高準確。不追號、不回改封存預測。</p>
 </div>'''
 
@@ -263,7 +272,8 @@ def build_reports(analysis_data, history):
 </details>
 </section>
 
-<section id="models" class="tab"><div class="band"><h2>520期前9碼時間序列走步回測</h2><div class="grid"><div class="card"><div class="label">前9碼平均命中</div><div class="value">{main_test['avg_hits']}</div><div class="note">隨機基準 {analysis_data['release_gate']['main_random_hits']}</div></div><div class="card"><div class="label">近60期至少1顆進前9</div><div class="value">{main_test['first_hit_rank_audit']['60']['within_9_rate'] * 100:.1f}%</div><div class="note">隨機基準 {main_test['within9_random_baseline'] * 100:.1f}%</div></div><div class="card"><div class="label">近120期前9碼命中</div><div class="value">{main_test['ensemble_recent_hits']['120']}</div><div class="note">超高共識門檻 ≥ {analysis_data['release_gate']['main_random_hits']}</div></div></div></div>
+<section id="models" class="tab"><div class="band"><h2>發佈規則・520期逐期重播</h2><div class="grid"><div class="card"><div class="label">前9碼平均命中</div><div class="value">{main_test['published_top9_avg_hits']}</div><div class="note">隨機基準 {analysis_data['release_gate']['main_random_hits']}</div></div><div class="card"><div class="label">近60期至少1顆進前9</div><div class="value">{main_test['first_hit_rank_audit']['60']['within_9_rate'] * 100:.1f}%</div><div class="note">隨機基準 {main_test['within9_random_baseline'] * 100:.1f}%</div></div><div class="card"><div class="label">近120期前9碼平均命中</div><div class="value">{main_test['published_top9_recent_hits']['120']}</div><div class="note">超高共識門檻 ≥ {analysis_data['release_gate']['main_random_hits']}</div></div></div></div>
+<div class="band"><h2>獨隻策略重整與固定評估段</h2><p>前400期只用來選策略；後120期固定策略評估。歷史逐期重播屬回顧驗證，真正前瞻成績另看封存實戰。</p>{table(['策略','前400期獨隻','後120期獨隻','520期獨隻','決策'],policy_rows)}<div class="grid"><div class="card"><div class="label">目前發佈策略</div><div class="value">{e(policy_labels.get(policy['selected'],policy['selected']))}</div></div><div class="card"><div class="label">同規則獨隻重播</div><div class="value">{replay['single_hits']}/{replay['rounds']}（{replay['single_hit_rate']*100:.2f}%）</div></div><div class="card"><div class="label">末120期固定評估</div><div class="value">{replay['evaluation_hits']}/{replay['evaluation_rounds']}（{replay['evaluation_hit_rate']*100:.2f}%）</div><div class="note">95%下限 {replay['evaluation_wilson_95_lower']*100:.2f}%・公平基準 {replay['fair_single_rate']*100:.2f}%</div></div></div></div>
 <div class="band"><h2>第10名後問題專項檢測</h2>{table(['窗口','至少1顆進前9比例','首顆平均名次','完全落在9名後期數'], rank_audit_rows)}</div>
 <details class="report-details"><summary>查看逐模組錯誤檢討與滾動調整</summary><div class="band"><h2>前9碼三層滾動權重</h2><p>{e(main_test['weighting_strategy'])}</p>{table(['模型','上期前9命中','近30期','近120期','近360期','連續失誤','新權重','調整決策'], model_rows)}</div><div class="band"><h2>冠軍／挑戰者實測</h2><p>本期升級：{e(champion['promoted'])}。{e(champion['rule'])}</p>{table(['版本','520期前9','近60期前9','近120期前9','520期獨支','近120期獨支','對數損失'], champion_rows)}</div>{research_html}</details></section>
 
@@ -271,7 +281,7 @@ def build_reports(analysis_data, history):
 
 <section id="monthly" class="tab"><div class="band"><h2>歷史封存與每月總整理</h2><p>每一筆依開獎前的「依據期別＋目標日」獨立封存；同日多次預測不合併、不回改。</p>{table(['月份','封存結算筆數','總命中','平均命中','單筆最高','特別號命中'], monthly_rows(history))}</div></section>
 
-<section id="verify" class="tab"><div class="band"><h2>模型說明</h2><p>14個模型分別檢查多窗口頻率、近期軌跡、遺漏危險率、間隔週期、同期开奖配對、真正的前一期→下一期拖牌轉移、2至36期滯後規律與狀態漂移。49個號碼全部參賽；除即時校準機率外，每碼還要檢查前9／前3模型共識、候選專屬520期走步樣本與95% Wilson下限。只有全條件通過者才能成為高信心終極獨支。</p><h3>失敗回饋規則</h3><ul><li>每期檢查所有實際號碼的預測名次</li><li>獨支第1名與前9碼分開記錄、分開驗證</li><li>首顆命中落到第10名後即列入錯誤檢討</li><li>短期30期占60%，120期占25%，360期占15%</li><li>校準誤差及連續零命中會額外扣權</li><li>單一模型權重上限22%</li><li>高信心必須通過49碼全候選守門；90%只接受開獎前封存的獨立實戰與95%信賴下限認證</li><li>未達高信心門檻時只列觀察級；最新開獎資料仍必須同步</li></ul></div>{research_html}</section>
+<section id="verify" class="tab"><div class="band"><h2>模型說明</h2><p>14個模型分別檢查多窗口頻率、近期軌跡、遺漏危險率、間隔週期、前一期雙錨與單錨對下一期的轉移、2至36期滯後規律與狀態漂移。49個號碼全部參賽；除即時模型估計外，每碼還要檢查前9／前3模型共識、同規則逐期重播的候選歷史樣本與95% Wilson下限。高信心還須通過候選守門、發佈規則回測及封存實戰；未通過只列觀察排序。</p><h3>失敗回饋規則</h3><ul><li>每期檢查所有實際號碼的預測名次</li><li>獨支第1名與前9碼分開記錄、分開驗證</li><li>首顆命中落到第10名後即列入錯誤檢討</li><li>模組權重依近30、120、360期滾動調整；策略只以前400期挑選，後120期單獨驗證</li><li>校準誤差及連續零命中會額外扣權</li><li>單一模型權重上限22%</li><li>高信心必須通過49碼全候選守門；90%只接受開獎前封存的獨立實戰與95%信賴下限認證</li><li>未達高信心門檻時只列觀察級；最新開獎資料仍必須同步</li></ul></div>{research_html}</section>
 
 <section id="iron" class="tab"><div class="band"><h2>系統健康</h2><div class="grid"><div class="card"><div class="label">資料日期／期別</div><div class="value">{e(analysis_data['latest_draw']['date'])}／{e(analysis_data['latest_draw']['period'])}</div></div><div class="card"><div class="label">預測守門</div><div class="value {gate_class}">{gate_text}</div></div><div class="card"><div class="label">雲端主更新</div><div class="value ok">每小時＋開獎後密集檢查</div></div><div class="card"><div class="label">第二層自主修復</div><div class="value ok">主流程失敗時自動啟動</div></div></div></div>
 <div class="band"><h2>最新版六合彩規則</h2><p>1至49選6個正選號碼，每注HK$10；另開1個特別號。</p>{table(['獎級','中獎條件','固定獎金'], [['一獎','6個正選','彩池制'],['二獎','5個正選＋特別號','彩池制'],['三獎','5個正選','彩池制'],['四獎','4個正選＋特別號','HK$9,600'],['五獎','4個正選','HK$640'],['六獎','3個正選＋特別號','HK$320'],['七獎','3個正選','HK$40']])}</div>

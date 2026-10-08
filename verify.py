@@ -26,7 +26,7 @@ def main():
     add("release_gate",analysis["release_gate"]["passed"],json.dumps(analysis["release_gate"],ensure_ascii=False),"advisory")
     add("walk_forward_520",analysis["backtest"]["main"]["rounds"]==520,str(analysis["backtest"]["main"]["rounds"]))
     add("main_hit_edge",analysis["release_gate"]["main_avg_hits"]>analysis["release_gate"]["main_random_hits"],f"{analysis['release_gate']['main_avg_hits']} > {analysis['release_gate']['main_random_hits']}","advisory")
-    recent=analysis["backtest"]["main"]["ensemble_recent_hits"]
+    recent=analysis["backtest"]["main"]["published_top9_recent_hits"]
     within9_60=analysis["backtest"]["main"]["first_hit_rank_audit"]["60"]["within_9_rate"]
     within9_random=analysis["backtest"]["main"]["within9_random_baseline"]
     add("recent_60_within9_edge",within9_60>=within9_random,f"{within9_60} >= {within9_random}","advisory")
@@ -35,8 +35,13 @@ def main():
     rank_audit=analysis["backtest"]["main"].get("first_hit_rank_audit",{})
     add("top9_rank_audit",analysis["backtest"]["main"].get("ranking_target")=="主號前9碼" and all(x in rank_audit for x in ("10","30","60","120")),json.dumps(rank_audit,ensure_ascii=False))
     cc=analysis["backtest"]["main"].get("champion_challenger",{})
-    add("champion_challenger_gate",cc.get("promoted") in ("獨支名次共識混合","原機率集成") and "champion" in cc and "challenger" in cc and all("single520" in cc[x] and "single120" in cc[x] for x in ("champion","challenger")),json.dumps(cc,ensure_ascii=False))
+    add("champion_challenger_gate",cc.get("promoted") in ("獨支名次共識混合","原機率集成") and cc.get("selection_rounds")==400 and cc.get("evaluation_rounds")==120 and "champion" in cc and "challenger" in cc and all("single520" in cc[x] and "single120" in cc[x] for x in ("champion","challenger")),json.dumps(cc,ensure_ascii=False))
     add("rank_consensus_selected",analysis["backtest"]["main"].get("rank_mix") in (0.0,0.65),str(analysis["backtest"]["main"].get("rank_mix")))
+    replay=analysis["backtest"]["main"].get("decision_replay",{})
+    policy=analysis["backtest"]["main"].get("policy_review",{})
+    policy_rows=policy.get("policies",{})
+    chosen=policy.get("selected")
+    add("published_policy_replayed",replay.get("rounds")==520 and replay.get("evaluation_rounds")==120 and len(replay.get("rows",[]))==520 and chosen in policy_rows and replay.get("single_hits")==sum(row.get("single_hit",0) for row in replay.get("rows",[])) and replay.get("evaluation_hits")==policy_rows.get(chosen,{}).get("evaluation_hits") and policy_rows.get(chosen,{}).get("development_hits")==max((item.get("development_hits",-1) for item in policy_rows.values()),default=-1) and all(row.get("period")==draw.period and row.get("date")==draw.draw_date for row,draw in zip(replay.get("rows",[]),draws[-520:])),json.dumps({"selected":chosen,"single_hits":replay.get("single_hits"),"evaluation_hits":replay.get("evaluation_hits"),"policies":policy_rows},ensure_ascii=False))
     add("special_hit_edge",analysis["release_gate"]["special_avg_hits"]>analysis["release_gate"]["special_random_hits"],f"{analysis['release_gate']['special_avg_hits']} > {analysis['release_gate']['special_random_hits']}","advisory")
     add("no_model_monopoly",analysis["release_gate"]["max_main_weight"]<=.22,str(analysis["release_gate"]["max_main_weight"]),"advisory")
     add("candidate_49",len(analysis["main_rank"])==49 and len(analysis["special_rank"])==49,"main/special 49")
@@ -47,7 +52,7 @@ def main():
     winner=tournament.get("winner",{})
     champion_valid=(tournament.get("confidence_champion")==analysis["packs"]["最強單支"][0] if tournament.get("high_confidence_found") else tournament.get("confidence_champion") is None and tournament.get("fallback_used") is True and not tournament.get("passed_numbers"))
     add("all_candidate_confidence_tournament",tournament.get("candidate_count")==49 and champion_valid and winner.get("number")==analysis["packs"]["最強單支"][0] and isinstance(winner.get("checks"),dict) and len(winner.get("checks",{}))>=6,json.dumps(tournament,ensure_ascii=False))
-    add("strongest_single_unique",strongest.get("number")==analysis["packs"]["最強單支"][0] and strongest.get("target_date")==analysis["target_date"] and analysis.get("decision_rank",[])[0].get("number")==analysis["packs"]["最強單支"][0] and analysis.get("decision_rank",[])[0].get("decision_score",0)>0,json.dumps(strongest,ensure_ascii=False))
+    add("strongest_single_unique",strongest.get("number")==analysis["packs"]["最強單支"][0] and strongest.get("target_date")==analysis["target_date"] and analysis.get("decision_rank",[])[0].get("number")==analysis["packs"]["最強單支"][0] and len(analysis.get("decision_rank",[]))==49 and analysis["decision_rank"][0].get("selection_basis")==policy.get("selected"),json.dumps(strongest,ensure_ascii=False))
     confidence=analysis["backtest"]["main"].get("confidence_audit",{})
     add("strongest_multi_logic_audit",confidence.get("number")==analysis["packs"]["最強單支"][0] and len(confidence.get("checks",{}))>=7 and all(isinstance(v,bool) for v in confidence.get("checks",{}).values()),json.dumps(confidence,ensure_ascii=False))
     trajectory=analysis["backtest"]["main"].get("trajectory_audit",{})
@@ -55,10 +60,10 @@ def main():
     required_trajectory_checks=("完整歷史資料至少4000期","520期逐期向前走步驗證","頻率軌跡週期拖牌模組全部執行","每期只使用當時以前資料","候選號碼1至49完整排序")
     trajectory_checks=trajectory.get("checks",{})
     add("daily_single_trajectory_audit",trajectory.get("daily_strongest")==analysis["packs"]["最強單支"][0] and trajectory.get("target_date")==analysis["target_date"] and trajectory.get("walk_forward_rounds")==520 and required_models.issubset(set(analysis["backtest"]["main"].get("names",[]))) and len(trajectory.get("module_groups",[]))==5 and all(trajectory_checks.get(name) is True for name in required_trajectory_checks),json.dumps(trajectory,ensure_ascii=False))
-    add("trajectory_confidence_gate",trajectory.get("strict_computation_passed") is True,json.dumps({"unique_candidate":trajectory_checks.get("全候選競賽決策分數唯一第1"),"model_weight_limit":trajectory_checks.get("單一模型權重不超過22%")},ensure_ascii=False),"advisory")
-    add("single_accuracy_not_inflated",trajectory.get("walk_forward_single_hits")==sum(int(row.get("single_hit",0)) for row in analysis["backtest"]["main"]["rows"]) and trajectory.get("certified_90_accuracy")==bool(trajectory.get("sealed_independent_draws",0)>=30 and trajectory.get("sealed_wilson_95_lower",0)>=.90),json.dumps({"single_rate":trajectory.get("walk_forward_single_hit_rate"),"sealed_rate":trajectory.get("sealed_single_hit_rate"),"wilson_lower":trajectory.get("sealed_wilson_95_lower"),"certified_90":trajectory.get("certified_90_accuracy")},ensure_ascii=False))
+    add("trajectory_confidence_gate",trajectory.get("strict_computation_passed") is True,json.dumps({"unique_first":trajectory_checks.get("發佈策略首位嚴格高於第二名"),"model_weight_limit":trajectory_checks.get("單一模型權重不超過22%")},ensure_ascii=False),"advisory")
+    add("single_accuracy_not_inflated",trajectory.get("walk_forward_single_hits")==sum(int(row.get("single_hit",0)) for row in replay.get("rows",[])) and trajectory.get("certified_90_accuracy")==bool(trajectory.get("sealed_independent_draws",0)>=30 and trajectory.get("sealed_wilson_95_lower",0)>=.90),json.dumps({"single_rate":trajectory.get("walk_forward_single_hit_rate"),"sealed_rate":trajectory.get("sealed_single_hit_rate"),"wilson_lower":trajectory.get("sealed_wilson_95_lower"),"certified_90":trajectory.get("certified_90_accuracy")},ensure_ascii=False))
     live=analysis.get("live_single_audit",{})
-    add("live_single_accuracy_audit",live.get("independent_draws",0)>0 and live.get("settled_snapshots",0)>=live.get("independent_draws",0) and live.get("duplicate_snapshots_excluded",0)==live.get("settled_snapshots",0)-live.get("independent_draws",0),json.dumps(live,ensure_ascii=False))
+    add("live_single_accuracy_audit",live.get("current_engine")==analysis.get("engine") and live.get("independent_draws",0)>=0 and live.get("settled_snapshots",0)>=live.get("independent_draws",0) and live.get("duplicate_snapshots_excluded",0)==live.get("settled_snapshots",0)-live.get("independent_draws",0),json.dumps(live,ensure_ascii=False))
     insufficient=live.get("independent_draws",0)<live.get("minimum_independent_samples",30)
     scoped_high_confidence=confidence.get("high_confidence_candidate") is True and "高信心候選" in confidence.get("label","") and "實戰認證累積中" in confidence.get("label","") and trajectory.get("certified_90_accuracy") is False
     add("no_overconfident_single_label",not insufficient or (not confidence.get("super_consensus") and ("樣本累積中" in confidence.get("label","") or scoped_high_confidence)),f"independent={live.get('independent_draws')}; label={confidence.get('label')}")

@@ -116,13 +116,14 @@ def settle_and_save(result: dict):
     return history
 
 def apply_live_single_audit(result: dict, history: list[dict]) -> dict:
-    """以每個實際開獎日一筆的封存預測，審核最強獨支的實戰可信度。"""
+    """僅以現行引擎的開獎前封存預測審核實戰；舊引擎成績不得移植。"""
     # 同一目標日可能因臨時改期留下多個封存版本；準確率只能計一次，採開獎前
     # 最接近目標日的版本，避免用重複快照膨脹樣本數。
     by_target={}
     settled_snapshots=0
+    current_engine=result.get("engine","legacy")
     for prediction in history:
-        if prediction.get("status")!="settled":
+        if prediction.get("status")!="settled" or prediction.get("engine","legacy")!=current_engine:
             continue
         settled_snapshots+=1
         target=prediction.get("target_date","")
@@ -163,7 +164,8 @@ def apply_live_single_audit(result: dict, history: list[dict]) -> dict:
     live_passed=total>=minimum_samples and overall_rate>=fair and len(recent10)>=10 and recent10_rate>=fair
     certified_90=total>=minimum_samples and wilson_lower>=.90
     audit={
-        "method":"每個目標開獎日只計一次；同日多個封存版本採開獎前最近版本",
+        "method":"只統計現行引擎；每個目標開獎日只計一次；同日多個封存版本採開獎前最近版本",
+        "current_engine":current_engine,
         "settled_snapshots":settled_snapshots,
         "independent_draws":total,
         "duplicate_snapshots_excluded":settled_snapshots-total,
@@ -185,11 +187,11 @@ def apply_live_single_audit(result: dict, history: list[dict]) -> dict:
     }
     result["live_single_audit"]=audit
     release=result["release_gate"]
-    model_passed=bool(release.get("passed"))
+    high_confidence_candidate=bool(result["backtest"]["main"]["confidence_audit"].get("high_confidence_candidate"))
+    model_passed=bool(release.get("passed")) and high_confidence_candidate
     release["model_passed"]=model_passed
     release["live_single_passed"]=live_passed
     release["passed"]=model_passed and live_passed
-    high_confidence_candidate=bool(result["backtest"]["main"]["confidence_audit"].get("high_confidence_candidate"))
     release["publish_mode"]="超高共識推薦" if release["passed"] else ("全模組高信心候選・實戰認證累積中" if high_confidence_candidate else "觀察級・實戰樣本累積中")
     confidence=result["backtest"]["main"]["confidence_audit"]
     model_consensus=bool(confidence.get("super_consensus"))
