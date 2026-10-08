@@ -373,7 +373,8 @@ def analyze(draws: list[Draw]) -> dict:
         })
     eligible=[item for item in candidate_tournament if item["high_confidence_passed"]]
     ordered_candidates=sorted(candidate_tournament,key=lambda item:(item["high_confidence_passed"],item["decision_score"],item["calibrated_probability"]),reverse=True)
-    strongest=(eligible and max(eligible,key=lambda item:(item["decision_score"],item["calibrated_probability"]))["number"]) or probability_champion
+    # 沒有候選通過高信心守門時，仍用全部模組的決策分數排序；不得偷換成單一機率榜冠軍。
+    strongest=ordered_candidates[0]["number"]
     strongest_evidence=next(item for item in candidate_tournament if item["number"]==strongest)
     decision_rank=[strongest]+[number for number in probability_rank if number!=strongest]
     top9_support=[name for name in main_bt["names"] if strongest in (np.argsort(current_models[name])[::-1]+1)[:9]]
@@ -381,12 +382,15 @@ def analyze(draws: list[Draw]) -> dict:
     weighted_support=sum(main_bt["weights"][name] for name in top9_support)
     ordered_eligible=sorted(eligible,key=lambda item:(item["decision_score"],item["calibrated_probability"]),reverse=True)
     # 只有一碼通過全部守門時，本身即為唯一合格者；兩碼以上才比較決策分差。
-    score_gap=(strongest_evidence["decision_score"]-ordered_eligible[1]["decision_score"]) if len(ordered_eligible)>1 else (1.0 if ordered_eligible else 0.0)
+    comparison_pool=ordered_eligible if eligible else ordered_candidates
+    score_gap=(strongest_evidence["decision_score"]-comparison_pool[1]["decision_score"]) if len(comparison_pool)>1 else 0.0
     main_bt["confidence_tournament"]={
         "rule":"49碼全部接受14模組現況共識、候選專屬520期走步樣本與95% Wilson下限競賽；通過全部守門者再按綜合決策分數排序",
         "probability_champion":probability_champion,
-        "confidence_champion":strongest,
+        "confidence_champion":strongest if eligible else None,
         "high_confidence_found":bool(eligible),
+        "fallback_used":not bool(eligible),
+        "selection_basis":"高信心合格候選決策分數" if eligible else "49碼全模組決策分數觀察排序",
         "candidate_count":len(candidate_tournament),
         "passed_numbers":[item["number"] for item in ordered_eligible],
         "minimum_candidate_samples":minimum_candidate_samples,
@@ -455,7 +459,7 @@ def analyze(draws: list[Draw]) -> dict:
     main_bt["confidence_tournament"]["target_date"]=provisional_target
     main_bt["confidence_audit"]["target_date"]=provisional_target
     main_bt["trajectory_audit"]["target_date"]=provisional_target
-    main_bt["strongest_single_audit"]={"number":strongest,"calibrated_probability":round(float(ms[strongest-1]),6),"selection_rule":"49個候選全部接受14個頻率、軌跡、週期、拖牌與滯後模組，再以候選專屬520期走步樣本及95% Wilson下限守門，取通過者的綜合決策分數第1名","based_on_period":draws[-1].period,"based_on_date":draws[-1].draw_date,"target_date":provisional_target,"probability_champion":probability_champion}
+    main_bt["strongest_single_audit"]={"number":strongest,"calibrated_probability":round(float(ms[strongest-1]),6),"selection_rule":"49個候選全部接受14個模組與候選專屬走步守門；有合格候選時取決策分數第1，否則僅列全候選決策分數觀察首位","based_on_period":draws[-1].period,"based_on_date":draws[-1].draw_date,"target_date":provisional_target,"probability_champion":probability_champion}
     return {"system":"香港六合彩新世代鐵律預測系統","engine":"marksix_cleanroom_ensemble_v7_all_candidate_confidence","generated_at":date.today().isoformat(),"history":{"count":len(draws),"first":draws[0].draw_date,"latest":draws[-1].draw_date,"latest_period":draws[-1].period},"latest_draw":{"period":draws[-1].period,"date":draws[-1].draw_date,"main":draws[-1].main,"special":draws[-1].special},"target_date":provisional_target,"main_rank":[{"rank":i+1,"number":n,"probability":round(float(ms[n-1]),6)} for i,n in enumerate(probability_rank)],"decision_rank":[{"rank":i+1,"number":n,"probability":round(float(ms[n-1]),6),"decision_score":next(item["decision_score"] for item in candidate_tournament if item["number"]==n)} for i,n in enumerate(decision_rank)],"special_rank":[{"rank":i+1,"number":n,"probability":round(float(ss[n-1]),6)} for i,n in enumerate(srank)],"packs":{"最強單支":[strongest],"機率排序第1":[probability_champion],"二中一":decision_rank[:2],"三中一":decision_rank[:3],"五中二":decision_rank[:5],"九中三":decision_rank[:9],"主攻12碼":decision_rank[:12],"防守18碼":decision_rank[:18]},"special_packs":{"最強單支":srank[:1],"三碼觀察":srank[:3]},"avoid":{"五不中":sorted(probability_rank[-5:]),"十不中":sorted(probability_rank[-10:]),"十五不中":sorted(probability_rank[-15:])},"suggested_sets":build_sets(ms),"rules":{"range":"1–49","main_numbers":6,"extra_numbers":1,"unit_bet_hkd":10,"prizes":{"一獎":"6個正選號碼","二獎":"5個正選號碼＋特別號","三獎":"5個正選號碼","四獎":"4個正選號碼＋特別號（固定HK$9,600）","五獎":"4個正選號碼（固定HK$640）","六獎":"3個正選號碼＋特別號（固定HK$320）","七獎":"3個正選號碼（固定HK$40）"}},"backtest":{"main":main_bt,"special":special_bt},"release_gate":{"passed":gate,"publish_mode":"超高共識推薦" if gate else ("全模組高信心候選・實戰認證累積中" if high_confidence_candidate else "觀察級排序"),"rule":"預測信心守門與開獎資料同步分離；未達門檻只降級標示，絕不可阻斷最新資料更新","main_edge":main_bt["logloss_edge"],"special_edge":special_bt["logloss_edge"],"main_avg_hits":main_bt["avg_hits"],"main_random_hits":round(main_random,4),"special_avg_hits":special_bt["avg_hits"],"special_random_hits":round(special_random,4),"max_main_weight":max(main_bt["weights"].values())},"operational_policy":{"data_sync_independent":True,"model_gate_blocks_data":False,"failed_gate_action":"保留最新資料、降級標示、啟動滾動檢討"},"notice":"歷史資料可用來檢測偏差與比較模型，但不能把未通過獨立封存驗證的軌跡宣稱為確定規律。本系統只發布可稽核的機率排序，不保證中獎。請量力而為，未滿18歲不得投注。"}
 
 if __name__=="__main__":

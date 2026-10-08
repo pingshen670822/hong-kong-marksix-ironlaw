@@ -1,7 +1,7 @@
 from __future__ import annotations
 import csv,json,re,sys,urllib.parse,urllib.request
 from datetime import date as _date,datetime,timedelta,timezone
-from engine import ROOT,load_draws,analyze
+from engine import ROOT,load_draws,analyze,wilson_lower
 from report import build_reports
 
 if hasattr(sys.stdout,"reconfigure"):
@@ -201,7 +201,8 @@ def apply_live_single_audit(result: dict, history: list[dict]) -> dict:
                     f"95%下限{confidence.get('candidate_wilson_95_lower',0)*100:.2f}%；") if high_confidence_candidate else ""
     confidence["warning"]=(
         f"{candidate_text}封存實戰目前{total}個獨立開獎日（{hit_count}中，{overall_rate*100:.1f}%）。"
-        f"這是全模組高信心候選，不是必中或90%保證；滿{minimum_samples}期前持續獨立認證。"
+        f"{'全模組高信心候選仍待實戰認證' if high_confidence_candidate else '未通過高信心守門，僅為觀察排序'}；"
+        f"不得宣稱必中或90%準確，滿{minimum_samples}期前持續獨立認證。"
     )
     trajectory=result["backtest"]["main"].get("trajectory_audit",{})
     trajectory["sealed_independent_draws"]=total
@@ -258,6 +259,25 @@ def apply_consecutive_single_audit(result: dict, history: list[dict]) -> dict:
     model_count=len(result["backtest"]["main"]["names"])
     required_support=int(confidence.get("required_model_support",max(7,round(model_count*.60))))
     is_repeat=streak>=2
+    draws=load_draws()
+    drawn_streak=0
+    for draw in reversed(draws):
+        if current_number not in draw.main:
+            break
+        drawn_streak+=1
+    repeat_samples=0
+    repeat_hits=0
+    if drawn_streak>=2:
+        # 只計「恰好已連開同樣期數」後的下一期，每段連開最多計一次。
+        for index in range(drawn_streak,len(draws)):
+            if not all(current_number in draws[index-offset].main for offset in range(1,drawn_streak+1)):
+                continue
+            if index>drawn_streak and current_number in draws[index-drawn_streak-1].main:
+                continue
+            repeat_samples+=1
+            repeat_hits+=current_number in draws[index].main
+    repeat_lower=wilson_lower(repeat_hits,repeat_samples)
+    drawn_repeat_supported=drawn_streak<2 or (repeat_samples>=30 and repeat_lower>6/49)
     checks={
         "跨不同依據期別重新運算":bool(previous and previous.get("based_on_period")!=current_period and previous.get("based_on_date","")<result["latest_draw"]["date"]),
         "最新開獎資料已納入":current.get("based_on_period")==current_period and current.get("based_on_date")==result["latest_draw"]["date"],
@@ -265,12 +285,20 @@ def apply_consecutive_single_audit(result: dict, history: list[dict]) -> dict:
         f"至少{required_support}個模型列入前9":confidence.get("model_top9_support",0)>=required_support,
         "加權模型共識至少65%":confidence.get("weighted_support_pct",0)>=65,
         "原始模型發布守門通過":bool(result["release_gate"].get("model_passed",result["release_gate"].get("passed"))),
+        "實際連開後續證據達標":drawn_repeat_supported,
     }
-    reasonable=all(checks.values()) if is_repeat else True
+    reasonable=(all(checks.values()) if is_repeat else True) and drawn_repeat_supported
     audit={
         "is_consecutive":is_repeat,
         "number":current_number,
         "streak":streak,
+        "drawn_streak":drawn_streak,
+        "drawn_repeat_samples":repeat_samples,
+        "drawn_repeat_hits":repeat_hits,
+        "drawn_repeat_rate":round(repeat_hits/repeat_samples,6) if repeat_samples else 0.0,
+        "drawn_repeat_wilson_95_lower":round(repeat_lower,6),
+        "drawn_repeat_fair_rate":round(6/49,6),
+        "drawn_repeat_evidence_passed":drawn_repeat_supported,
         "basis_periods":streak_periods,
         "previous_basis_period":previous.get("based_on_period") if previous else None,
         "current_basis_period":current_period,
@@ -291,15 +319,21 @@ def apply_consecutive_single_audit(result: dict, history: list[dict]) -> dict:
             f"加權共識{confidence.get('weighted_support_pct',0):.2f}%。連莊模型依據{'通過' if reasonable else '未通過'}；"
             f"實戰樣本守門{'通過' if result['release_gate'].get('live_single_passed') else '未通過，故仍為觀察級'}。"
         )
+    elif drawn_streak>=2:
+        audit["status"]=(f"{current_number:02d}不是連續推薦，但已連續{drawn_streak}期實際開出；"
+                         f"歷史上恰好連開{drawn_streak}期後有{repeat_samples}次可觀察機會、次期命中{repeat_hits}次，"
+                         f"95%下限{repeat_lower*100:.2f}%（單號公平基準{6/49*100:.2f}%）。"
+                         f"連開證據{'達標' if drawn_repeat_supported else '不足，僅能列觀察級'}。")
     else:
-        audit["status"]=f"{current_number:02d}本期不是連莊，無須啟動連莊守門。"
+        audit["status"]=f"{current_number:02d}未形成連續推薦或實際連開，無須啟動連莊守門。"
     result["consecutive_single_audit"]=audit
     confidence["checks"]["連莊合理性驗證"]=reasonable
-    if is_repeat and not reasonable:
+    confidence["checks"]["實際連開合理性驗證"]=drawn_repeat_supported
+    if (is_repeat or drawn_streak>=2) and not reasonable:
         confidence["super_consensus"]=False
-        confidence["label"]="觀察級・連莊驗證未通過・實戰樣本累積中"
+        confidence["label"]="觀察級・連開證據不足・實戰樣本累積中"
         result["release_gate"]["passed"]=False
-        result["release_gate"]["publish_mode"]="觀察級・連莊驗證未通過"
+        result["release_gate"]["publish_mode"]="觀察級・連開驗證未通過"
     return audit
 
 def main():

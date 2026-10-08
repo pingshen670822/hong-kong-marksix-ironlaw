@@ -45,7 +45,8 @@ def main():
     add("all_modules_rolling_reviewed",len(audit)==len(analysis["backtest"]["main"]["names"]) and all("decision" in x and "recent_120_avg_hits" in x for x in audit),f"{len(audit)} modules reviewed")
     tournament=analysis["backtest"]["main"].get("confidence_tournament",{})
     winner=tournament.get("winner",{})
-    add("all_candidate_confidence_tournament",tournament.get("candidate_count")==49 and tournament.get("confidence_champion")==analysis["packs"]["最強單支"][0] and winner.get("number")==analysis["packs"]["最強單支"][0] and isinstance(winner.get("checks"),dict) and len(winner.get("checks",{}))>=6,json.dumps(tournament,ensure_ascii=False))
+    champion_valid=(tournament.get("confidence_champion")==analysis["packs"]["最強單支"][0] if tournament.get("high_confidence_found") else tournament.get("confidence_champion") is None and tournament.get("fallback_used") is True and not tournament.get("passed_numbers"))
+    add("all_candidate_confidence_tournament",tournament.get("candidate_count")==49 and champion_valid and winner.get("number")==analysis["packs"]["最強單支"][0] and isinstance(winner.get("checks"),dict) and len(winner.get("checks",{}))>=6,json.dumps(tournament,ensure_ascii=False))
     add("strongest_single_unique",strongest.get("number")==analysis["packs"]["最強單支"][0] and strongest.get("target_date")==analysis["target_date"] and analysis.get("decision_rank",[])[0].get("number")==analysis["packs"]["最強單支"][0] and analysis.get("decision_rank",[])[0].get("decision_score",0)>0,json.dumps(strongest,ensure_ascii=False))
     confidence=analysis["backtest"]["main"].get("confidence_audit",{})
     add("strongest_multi_logic_audit",confidence.get("number")==analysis["packs"]["最強單支"][0] and len(confidence.get("checks",{}))>=7 and all(isinstance(v,bool) for v in confidence.get("checks",{}).values()),json.dumps(confidence,ensure_ascii=False))
@@ -64,9 +65,14 @@ def main():
     proof=analysis.get("recalculation_proof",{})
     add("recalculation_proof",proof.get("current_period")==analysis["latest_draw"]["period"] and proof.get("current_single")==analysis["packs"]["最強單支"][0] and bool(proof.get("completed_at")) and isinstance(proof.get("data_changed"),bool) and isinstance(proof.get("single_changed"),bool),json.dumps(proof,ensure_ascii=False))
     repeat=analysis.get("consecutive_single_audit",{})
-    repeat_required=repeat.get("is_consecutive") is True
-    repeat_downgraded=(repeat.get("reasonable_repeat_passed") is True or (analysis["release_gate"].get("passed") is False and "連莊驗證未通過" in analysis["release_gate"].get("publish_mode","")))
+    repeat_required=repeat.get("is_consecutive") is True or repeat.get("drawn_streak",0)>=2
+    repeat_downgraded=(repeat.get("reasonable_repeat_passed") is True or (analysis["release_gate"].get("passed") is False and "連開驗證未通過" in analysis["release_gate"].get("publish_mode","")))
     add("consecutive_single_rationality",repeat.get("number")==analysis["packs"]["最強單支"][0] and isinstance(repeat.get("reasonable_repeat_passed"),bool) and len(repeat.get("checks",{}))>=6 and (not repeat_required or repeat_downgraded),json.dumps(repeat,ensure_ascii=False))
+    actual_streak=0
+    for draw in reversed(draws):
+        if repeat.get("number") not in draw.main: break
+        actual_streak+=1
+    add("drawn_number_repeat_audit",repeat.get("drawn_streak")==actual_streak and isinstance(repeat.get("drawn_repeat_samples"),int) and isinstance(repeat.get("drawn_repeat_hits"),int) and repeat.get("drawn_repeat_hits",0)<=repeat.get("drawn_repeat_samples",0) and (actual_streak<2 or repeat.get("drawn_repeat_evidence_passed") is True or "觀察級" in confidence.get("label","")),json.dumps({"actual_streak":actual_streak,"audit":repeat.get("drawn_streak"),"samples":repeat.get("drawn_repeat_samples"),"hits":repeat.get("drawn_repeat_hits"),"evidence_passed":repeat.get("drawn_repeat_evidence_passed")},ensure_ascii=False))
     add("recommendation_tiers_clear",set(analysis["backtest"]["main"].get("recommendation_tiers",{}))=={"A_唯一最強","B_高信心前三","C_核心前九","D_次高防守","E_低機率暫避"},"A-E tiers")
     add("suggested_sets",len(analysis["suggested_sets"])==8 and all(len(set(x))==6 for x in analysis["suggested_sets"]),"8 valid sets")
     required=["index.html","latest_battle_report.html","latest_analysis.json","prediction_history.json","version.json","style.css","app.js","service-worker.js","manifest.webmanifest"]

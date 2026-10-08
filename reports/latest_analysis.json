@@ -2979,7 +2979,7 @@
           "first_hit_rank": 2,
           "within_9": true,
           "brier": 0.10762391364756094,
-          "logloss": 0.3725710478521767
+          "logloss": 0.37257104785217665
         },
         {
           "period": "23/103",
@@ -3321,7 +3321,7 @@
           "first_hit_rank": 9,
           "within_9": true,
           "brier": 0.10759914201298583,
-          "logloss": 0.3724391539787677
+          "logloss": 0.37243915397876765
         },
         {
           "period": "23/121",
@@ -3815,7 +3815,7 @@
           "first_hit_rank": 10,
           "within_9": false,
           "brier": 0.10792799622651272,
-          "logloss": 0.3739895285699717
+          "logloss": 0.37398952856997175
         },
         {
           "period": "24/001 SBD",
@@ -6398,7 +6398,7 @@
           ],
           "first_hit_rank": 19,
           "within_9": false,
-          "brier": 0.10801210068489718,
+          "brier": 0.10801210068489717,
           "logloss": 0.37437427020394476
         },
         {
@@ -6836,7 +6836,7 @@
           "first_hit_rank": 9,
           "within_9": true,
           "brier": 0.10762804184283829,
-          "logloss": 0.37255550971276374
+          "logloss": 0.37255550971276385
         },
         {
           "period": "25/020",
@@ -7843,7 +7843,7 @@
           "first_hit_rank": 12,
           "within_9": false,
           "brier": 0.1075045045478766,
-          "logloss": 0.3720096714988039
+          "logloss": 0.3720096714988038
         },
         {
           "period": "25/073",
@@ -10750,7 +10750,7 @@
           "first_hit_rank": 1,
           "within_9": true,
           "brier": 0.10749940139747634,
-          "logloss": 0.37201674970908233
+          "logloss": 0.3720167497090823
         },
         {
           "period": "26/092",
@@ -11473,8 +11473,10 @@
       "confidence_tournament": {
         "rule": "49碼全部接受14模組現況共識、候選專屬520期走步樣本與95% Wilson下限競賽；通過全部守門者再按綜合決策分數排序",
         "probability_champion": 31,
-        "confidence_champion": 31,
+        "confidence_champion": null,
         "high_confidence_found": false,
+        "fallback_used": true,
+        "selection_basis": "49碼全模組決策分數觀察排序",
         "candidate_count": 49,
         "passed_numbers": [],
         "minimum_candidate_samples": 20,
@@ -11726,13 +11728,13 @@
       },
       "confidence_audit": {
         "number": 31,
-        "label": "模型排序第1・實戰樣本累積中",
+        "label": "觀察級・連開證據不足・實戰樣本累積中",
         "high_confidence_candidate": false,
         "super_consensus": false,
         "calibrated_probability": 0.132982,
         "fair_probability": 0.122449,
         "relative_lift_pct": 8.6,
-        "score_gap_to_second": 0.0,
+        "score_gap_to_second": 9.451092,
         "probability_champion": 31,
         "probability_rank": 1,
         "model_top9_support": 10,
@@ -11750,12 +11752,13 @@
           "至少7個模型列入前3": false,
           "候選專屬走步樣本至少20期": false,
           "候選走步95%下限高於公平基準": true,
-          "全候選競賽決策分數唯一第1": false,
+          "全候選競賽決策分數唯一第1": true,
           "整體模型發布守門通過": false,
           "封存實戰至少30個獨立開獎日": false,
-          "連莊合理性驗證": true
+          "連莊合理性驗證": false,
+          "實際連開合理性驗證": false
         },
-        "warning": "封存實戰目前16個獨立開獎日（6中，37.5%）。這是全模組高信心候選，不是必中或90%保證；滿30期前持續獨立認證。",
+        "warning": "封存實戰目前16個獨立開獎日（6中，37.5%）。未通過高信心守門，僅為觀察排序；不得宣稱必中或90%準確，滿30期前持續獨立認證。",
         "target_date": "2026-10-10",
         "model_super_consensus": false
       },
@@ -11865,10 +11868,10 @@
           "頻率軌跡週期拖牌模組全部執行": true,
           "每期只使用當時以前資料": true,
           "候選號碼1至49完整排序": true,
-          "全候選競賽決策分數唯一第1": false,
+          "全候選競賽決策分數唯一第1": true,
           "單一模型權重不超過22%": true
         },
-        "strict_computation_passed": false,
+        "strict_computation_passed": true,
         "walk_forward_rounds": 520,
         "walk_forward_single_hits": 94,
         "walk_forward_single_hit_rate": 0.180769,
@@ -11942,7 +11945,7 @@
       "strongest_single_audit": {
         "number": 31,
         "calibrated_probability": 0.132982,
-        "selection_rule": "49個候選全部接受14個頻率、軌跡、週期、拖牌與滯後模組，再以候選專屬520期走步樣本及95% Wilson下限守門，取通過者的綜合決策分數第1名",
+        "selection_rule": "49個候選全部接受14個模組與候選專屬走步守門；有合格候選時取決策分數第1，否則僅列全候選決策分數觀察首位",
         "based_on_period": "26/107",
         "based_on_date": "2026-10-08",
         "target_date": "2026-10-10",
@@ -14307,7 +14310,7 @@
           "first_hit_rank": 33,
           "within_9": false,
           "brier": 0.020017539039151228,
-          "logloss": 0.10024745245902439
+          "logloss": 0.1002474524590244
         },
         {
           "period": "24/022",
@@ -19354,7 +19357,7 @@
   },
   "release_gate": {
     "passed": false,
-    "publish_mode": "觀察級・實戰樣本累積中",
+    "publish_mode": "觀察級・連開驗證未通過",
     "rule": "預測信心守門與開獎資料同步分離；未達門檻只降級標示，絕不可阻斷最新資料更新",
     "main_edge": 4.846e-05,
     "special_edge": 1.542e-05,
@@ -19385,7 +19388,7 @@
   },
   "update_status": "最新資料已完成抓取、結算、重算與手機同步",
   "recalculation_proof": {
-    "completed_at": "2026-10-08T21:51:34+08:00",
+    "completed_at": "2026-10-08T21:57:56+08:00",
     "previous_period": "26/107",
     "current_period": "26/107",
     "current_draw_date": "2026-10-08",
@@ -19532,6 +19535,13 @@
     "is_consecutive": false,
     "number": 31,
     "streak": 1,
+    "drawn_streak": 4,
+    "drawn_repeat_samples": 1,
+    "drawn_repeat_hits": 0,
+    "drawn_repeat_rate": 0.0,
+    "drawn_repeat_wilson_95_lower": 0.0,
+    "drawn_repeat_fair_rate": 0.122449,
+    "drawn_repeat_evidence_passed": false,
     "basis_periods": [
       "26/107"
     ],
@@ -19541,17 +19551,18 @@
     "model_top9_support": 10,
     "model_count": 14,
     "weighted_support_pct": 78.13,
-    "score_gap_to_second": 0.0,
+    "score_gap_to_second": 9.451092,
     "checks": {
       "跨不同依據期別重新運算": true,
       "最新開獎資料已納入": true,
-      "第一名嚴格高於第二名": false,
+      "第一名嚴格高於第二名": true,
       "至少9個模型列入前9": true,
       "加權模型共識至少65%": true,
-      "原始模型發布守門通過": false
+      "原始模型發布守門通過": false,
+      "實際連開後續證據達標": false
     },
-    "reasonable_repeat_passed": true,
+    "reasonable_repeat_passed": false,
     "strong_recommendation_passed": false,
-    "status": "31本期不是連莊，無須啟動連莊守門。"
+    "status": "31不是連續推薦，但已連續4期實際開出；歷史上恰好連開4期後有1次可觀察機會、次期命中0次，95%下限0.00%（單號公平基準12.24%）。連開證據不足，僅能列觀察級。"
   }
 }
