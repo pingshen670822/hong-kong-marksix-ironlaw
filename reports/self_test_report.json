@@ -163,7 +163,7 @@
       "name": "recalculation_proof",
       "passed": true,
       "severity": "critical",
-      "detail": "{\"completed_at\": \"2026-10-08T21:57:56+08:00\", \"previous_period\": \"26/107\", \"current_period\": \"26/107\", \"current_draw_date\": \"2026-10-08\", \"data_changed\": false, \"previous_single\": 31, \"current_single\": 31, \"single_changed\": false, \"crosschecked_dates\": 100, \"latest_source\": \"備援來源已發布，主來源待核對\", \"status\": \"官方開獎資料未新增，已用26/107期完整重算；終極獨支維持31，不是沿用舊頁\"}"
+      "detail": "{\"completed_at\": \"2026-10-08T21:59:28+08:00\", \"previous_period\": \"26/107\", \"current_period\": \"26/107\", \"current_draw_date\": \"2026-10-08\", \"data_changed\": false, \"previous_single\": 31, \"current_single\": 31, \"single_changed\": false, \"crosschecked_dates\": 100, \"latest_source\": \"備援來源已發布，主來源待核對\", \"status\": \"官方開獎資料未新增，已用26/107期完整重算；終極獨支維持31，不是沿用舊頁\"}"
     },
     {
       "name": "consecutive_single_rationality",
