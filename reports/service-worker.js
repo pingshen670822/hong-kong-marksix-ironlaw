@@ -1,4 +1,4 @@
-const CACHE='hk-marksix-official-v9-00bddc64c0ed7b87';
+const CACHE='hk-marksix-official-v9-6f27bd1699f98646';
 const ASSETS=['./','index.html','latest_battle_report.html','version.json'];
 self.addEventListener('install',e=>{self.skipWaiting();e.waitUntil(caches.open(CACHE).then(c=>Promise.allSettled(ASSETS.map(a=>c.add(a)))))});
 self.addEventListener('activate',e=>{e.waitUntil(Promise.all([caches.keys().then(keys=>Promise.allSettled(keys.filter(k=>k!==CACHE).map(k=>caches.delete(k)))),self.clients.claim()]))});
