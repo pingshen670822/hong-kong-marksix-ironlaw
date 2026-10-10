@@ -1,10 +1,10 @@
 {
   "schema": "marksix_official_v9",
-  "generated_at": "2026-10-10T22:25:07+08:00",
+  "generated_at": "2026-10-10T22:26:10+08:00",
   "official_data": {
     "source": "香港賽馬會官方 GraphQL 已公布攪珠結果",
     "endpoint": "https://info.cld.hkjc.com/graphql/base/",
-    "retrieved_at_utc": "2026-10-10T14:25:06+00:00",
+    "retrieved_at_utc": "2026-10-10T14:26:10+00:00",
     "count": 3324,
     "first": "2003-01-02",
     "latest": "2026-10-10",
@@ -13,7 +13,7 @@
     "evidence": {
       "mode": "official_recent_refresh",
       "recent_official_results": 93,
-      "previously_verified": 3323
+      "previously_verified": 3324
     },
     "history_bootstrap": {
       "mode": "full_official_bootstrap",
