@@ -1,7 +1,7 @@
 {
   "source": "香港賽馬會官方 GraphQL 已公布攪珠結果",
   "endpoint": "https://info.cld.hkjc.com/graphql/base/",
-  "retrieved_at_utc": "2026-10-10T02:15:15+00:00",
+  "retrieved_at_utc": "2026-10-10T02:20:57+00:00",
   "count": 3323,
   "first": "2003-01-02",
   "latest": "2026-10-08",
