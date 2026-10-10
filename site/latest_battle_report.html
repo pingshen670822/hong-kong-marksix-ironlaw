@@ -10,7 +10,7 @@
 </style></head><body><main>
 <header><h1>六合彩｜全新官方資料核驗戰報 v9</h1><div class="muted">獨立重建・僅用香港賽馬會官方結果・舊模型與舊資料不灌入</div>
 <div class="actions"><button id="check-now" type="button">手動核對雲端最新</button><a class="action" href="https://github.com/pingshen670822/hong-kong-marksix-ironlaw/actions/workflows/update.yml" target="_blank" rel="noopener">啟動雲端重新抓取</a><a class="action" href="https://github.com/pingshen670822/hong-kong-marksix-ironlaw/actions/workflows/cloud-self-repair.yml" target="_blank" rel="noopener">當機立即修復</a></div>
-<p id="refresh-status">戰報產生：2026-10-10T06:54:51+08:00；尚未手動核對。</p>
+<p id="refresh-status">戰報產生：2026-10-10T10:14:43+08:00；尚未手動核對。</p>
 <small>手動核對只會讀取雲端版本；真正重新抓取需登入 GitHub 啟動流程，網頁不持有任何憑證。</small></header>
 <section class="card good"><h2>官方已公布最新一期</h2><div class="grid"><div class="metric"><span class="label">期別／日期</span><b>26/107・2026-10-08</b></div><div class="metric"><span class="label">官方原始識別碼</span><b>2026107N</b></div></div><p><span class='ball'>18</span><span class='ball'>19</span><span class='ball'>24</span><span class='ball'>31</span><span class='ball'>40</span><span class='ball'>44</span> ＋ <span class="ball rank">05</span></p>
 <p class="muted">官方資料：<a href="https://bet.hkjc.com/en/mark" target="_blank" rel="noopener">香港賽馬會六合彩結果</a>；本次直接由官方結果介面取得，不以第三方資料補缺。</p></section>
@@ -21,7 +21,7 @@
 <section class="card"><h2>固定時序回放（不是前瞻實戰）</h2><p>前 400 期選模型，後 120 期不再調整選擇。單號公平基準為 6/49＝12.24%。五模型多重比較後，選定模型的評估 p 值為 0.0961；<b>未達 0.05 門檻，禁止標高信心</b>。</p>
 <div class="tablewrap"><table><thead><tr><th>固定模型</th><th>前400期獨支</th><th>後120期獨支</th><th>後120期前九均中</th><th>單側 p 值</th></tr></thead><tbody><tr><td>bayes_60</td><td>64/400</td><td>23/120</td><td>1.167</td><td>0.0192</td></tr><tr><td>bayes_240</td><td>60/400</td><td>10/120</td><td>1.050</td><td>0.9326</td></tr><tr><td>ewma_60</td><td>57/400</td><td>17/120</td><td>1.150</td><td>0.2984</td></tr><tr><td>lag_transition</td><td>63/400</td><td>15/120</td><td>1.208</td><td>0.5074</td></tr><tr><td>equal_blend</td><td>59/400</td><td>12/120</td><td>1.092</td><td>0.8113</td></tr></tbody></table></div><p class="muted">選定模型後 120 期獨支 23/120；此數字不能替代今後開獎前封存的實戰。</p></section>
 <section class="card"><h2>開獎前封存實戰</h2><div class="grid"><div class="metric"><span class="label">新系統封存預測</span><b>1 筆</b></div><div class="metric"><span class="label">已結算</span><b>0 期</b></div><div class="metric"><span class="label">獨支命中</span><b>0/0</b></div></div><p class="muted">舊版封存不混算。預測與結算採附加式雜湊鏈並由 Git 留痕；雜湊鏈校驗不是獨立公證。</p></section>
-<footer>產生時間 2026-10-10T06:54:51+08:00（香港／台灣時間）。六合彩為隨機攪珠；本系統不保證中獎，未滿 18 歲不得投注，請量力而為。</footer></main>
+<footer>產生時間 2026-10-10T10:14:43+08:00（香港／台灣時間）。六合彩為隨機攪珠；本系統不保證中獎，未滿 18 歲不得投注，請量力而為。</footer></main>
 <script>
 const status=document.getElementById('refresh-status');
 async function checkVersion(){
@@ -38,7 +38,7 @@ async function checkVersion(){
     if(health.operational_passed!==true||health.latest_period!==version.latest_period)throw Error('健康檢查未通過或期別不一致');
     const now=new Date().toLocaleString('zh-HK',{hour12:false});
     status.textContent='最後核對：'+now+'；雲端產生：'+version.updated_at+'；最新期別：'+version.latest_period+'／'+version.latest_date;
-    if(version.hash!=="4a0207ff1cee7734"){status.textContent+='；偵測到新版本，正在重新載入';location.reload()}
+    if(version.hash!=="61303f90dc3adb3d"){status.textContent+='；偵測到新版本，正在重新載入';location.reload()}
   }catch(error){status.textContent='核對失敗：'+error.message+'；請使用雲端重算或修復連結。'}
 }
 document.getElementById('check-now').addEventListener('click',checkVersion);setInterval(checkVersion,60000);document.addEventListener('visibilitychange',()=>{if(!document.hidden)checkVersion()});
