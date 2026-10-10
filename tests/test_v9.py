@@ -13,6 +13,15 @@ from v9 import watchdog
 
 
 class OfficialRebuildTests(unittest.TestCase):
+    def test_mobile_report_has_read_only_public_fallback(self):
+        root = Path(__file__).resolve().parents[1]
+        report = (root / "reports" / "index.html").read_text(encoding="utf-8")
+        self.assertIn("raw.githubusercontent.com/pingshen670822/hong-kong-marksix-ironlaw/main/reports/", report)
+        self.assertIn("health.operational_passed!==true", report)
+        self.assertIn("report.includes(version.hash)", report)
+        self.assertIn("document.open();document.write(report);document.close();", report)
+        self.assertIn("checkVersion();", report)
+
     def test_active_entrypoints_do_not_load_legacy_data(self):
         root = Path(__file__).resolve().parents[1]
         for name in ("engine.py", "update.py", "watchdog.py", "verify.py",

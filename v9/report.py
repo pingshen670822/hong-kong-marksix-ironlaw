@@ -70,7 +70,7 @@ def build_report(draws: list[OfficialDraw], manifest: dict, model: dict, ledger:
 <header><h1>六合彩｜全新官方資料核驗戰報 v9</h1><div class="muted">獨立重建・僅用香港賽馬會官方結果・舊模型與舊資料不灌入</div>
 <div class="actions"><button id="check-now" type="button">手動核對雲端最新</button><a class="action" href="https://github.com/pingshen670822/hong-kong-marksix-ironlaw/actions/workflows/update.yml" target="_blank" rel="noopener">啟動雲端重新抓取</a><a class="action" href="https://github.com/pingshen670822/hong-kong-marksix-ironlaw/actions/workflows/cloud-self-repair.yml" target="_blank" rel="noopener">當機立即修復</a></div>
 <p id="refresh-status">戰報產生：{_safe(now)}；尚未手動核對。</p>
-<small>手動核對只會讀取雲端版本；真正重新抓取需登入 GitHub 啟動流程，網頁不持有任何憑證。</small></header>
+<small>手動核對會比對本站與公開 GitHub 戰報；本站快照延遲時僅顯示已核驗的較新版本。真正重新抓取需登入 GitHub 啟動流程，網頁不持有任何憑證。</small></header>
 <section class="card good"><h2>官方已公布最新一期</h2><div class="grid"><div class="metric"><span class="label">期別／日期</span><b>{_safe(latest.period)}・{_safe(latest.draw_date)}</b></div><div class="metric"><span class="label">官方原始識別碼</span><b>{_safe(latest.source_id)}</b></div></div><p>{balls} ＋ <span class="ball rank">{latest.special:02d}</span></p>
 <p class="muted">官方資料：<a href="{_safe(SOURCE_URL)}" target="_blank" rel="noopener">香港賽馬會六合彩結果</a>；本次直接由官方結果介面取得，不以第三方資料補缺。</p></section>
 <section class="card warning"><h2>下一期研究排序：{model['single']:02d}</h2><div class="number">{model['single']:02d}</div><p><b>{_safe(observation)}</b>。這是 {_safe(model['selected_model'])} 的相對排序第 1 名，不是中獎機率、必中或投注建議。</p>
@@ -83,24 +83,55 @@ def build_report(draws: list[OfficialDraw], manifest: dict, model: dict, ledger:
 <footer>產生時間 { _safe(now) }（香港／台灣時間）。六合彩為隨機攪珠；本系統不保證中獎，未滿 18 歲不得投注，請量力而為。</footer></main>
 <script>
 const status=document.getElementById('refresh-status');
+const rawBase='https://raw.githubusercontent.com/pingshen670822/hong-kong-marksix-ironlaw/main/reports/';
+const pageGeneratedAt={json.dumps(now)};
+const pageLatestDate={json.dumps(latest.draw_date)};
+async function snapshot(base,stamp){{
+  const [versionResponse,analysisResponse,healthResponse]=await Promise.all([
+    fetch(base+'version.json?ts='+stamp,{{cache:'no-store'}}),
+    fetch(base+'latest_analysis.json?ts='+stamp,{{cache:'no-store'}}),
+    fetch(base+'self_test_report.json?ts='+stamp,{{cache:'no-store'}})
+  ]);
+  if(!versionResponse.ok||!analysisResponse.ok||!healthResponse.ok)throw Error('雲端檔案未全部可讀');
+  const [version,analysis,health]=await Promise.all([versionResponse.json(),analysisResponse.json(),healthResponse.json()]);
+  if(version.schema!=='marksix_official_v9'||analysis.schema!==version.schema)throw Error('資料格式不符');
+  if(version.latest_period!==analysis.latest_draw.period||version.latest_date!==analysis.latest_draw.date)throw Error('雲端版本與開獎資料不同步');
+  if(health.operational_passed!==true||health.latest_period!==version.latest_period||health.latest_date!==version.latest_date)throw Error('健康檢查未通過或期別不一致');
+  return {{version,analysis}};
+}}
+function isNewer(a,b){{
+  if(!b)return true;
+  return a.version.latest_date>b.version.latest_date ||
+    (a.version.latest_date===b.version.latest_date && a.version.updated_at>b.version.updated_at);
+}}
 async function checkVersion(){{
   try{{
     const stamp=Date.now();
-    const [versionResponse,analysisResponse,healthResponse]=await Promise.all([
-      fetch('version.json?ts='+stamp,{{cache:'no-store'}}),
-      fetch('latest_analysis.json?ts='+stamp,{{cache:'no-store'}}),
-      fetch('self_test_report.json?ts='+stamp,{{cache:'no-store'}})
-    ]);
-    if(!versionResponse.ok||!analysisResponse.ok||!healthResponse.ok)throw Error('雲端檔案未全部可讀');
-    const [version,analysis,health]=await Promise.all([versionResponse.json(),analysisResponse.json(),healthResponse.json()]);
-    if(version.latest_period!==analysis.latest_draw.period||version.latest_date!==analysis.latest_draw.date)throw Error('雲端版本與開獎資料不同步');
-    if(health.operational_passed!==true||health.latest_period!==version.latest_period)throw Error('健康檢查未通過或期別不一致');
+    const [siteResult,rawResult]=await Promise.allSettled([snapshot('',stamp),snapshot(rawBase,stamp)]);
+    const site=siteResult.status==='fulfilled'?siteResult.value:null;
+    const raw=rawResult.status==='fulfilled'?rawResult.value:null;
+    const newerRaw=raw&&isNewer(raw,site);
+    const chosen=newerRaw?raw:(site||raw);
+    if(!chosen)throw Error('本站與公開資料來源均未通過核對');
+    const version=chosen.version;
     const now=new Date().toLocaleString('zh-HK',{{hour12:false}});
-    status.textContent='最後核對：'+now+'；雲端產生：'+version.updated_at+'；最新期別：'+version.latest_period+'／'+version.latest_date;
-    if(version.hash!=={json.dumps(version_hash)}){{status.textContent+='；偵測到新版本，正在重新載入';location.reload()}}
+    status.textContent='最後核對：'+now+'；雲端產生：'+version.updated_at+'；最新期別：'+version.latest_period+'／'+version.latest_date+(newerRaw?'；公開 GitHub 備援':'；本站');
+    const newerThanPage=version.latest_date>pageLatestDate ||
+      (version.latest_date===pageLatestDate && version.updated_at>pageGeneratedAt);
+    if(!newerThanPage)return;
+    if(newerRaw){{
+      const reportResponse=await fetch(rawBase+'index.html?ts='+stamp,{{cache:'no-store'}});
+      if(!reportResponse.ok)throw Error('較新戰報無法讀取');
+      const report=await reportResponse.text();
+      if(!report.includes(version.hash)||!report.includes(version.latest_period))throw Error('較新戰報與核對版本不一致');
+      document.open();document.write(report);document.close();
+      return;
+    }}
+    location.reload();
   }}catch(error){{status.textContent='核對失敗：'+error.message+'；請使用雲端重算或修復連結。'}}
 }}
 document.getElementById('check-now').addEventListener('click',checkVersion);setInterval(checkVersion,60000);document.addEventListener('visibilitychange',()=>{{if(!document.hidden)checkVersion()}});
+checkVersion();
 if('serviceWorker' in navigator)navigator.serviceWorker.register('service-worker.js').catch(()=>{{}});
 </script></body></html>"""
     version = {"updated_at": now, "latest_period": latest.period, "latest_date": latest.draw_date,
