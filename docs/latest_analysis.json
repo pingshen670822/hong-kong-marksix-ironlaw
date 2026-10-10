@@ -1,18 +1,18 @@
 {
   "schema": "marksix_official_v9",
-  "generated_at": "2026-10-10T17:03:11+08:00",
+  "generated_at": "2026-10-10T22:25:07+08:00",
   "official_data": {
     "source": "香港賽馬會官方 GraphQL 已公布攪珠結果",
     "endpoint": "https://info.cld.hkjc.com/graphql/base/",
-    "retrieved_at_utc": "2026-10-10T09:03:10+00:00",
-    "count": 3323,
+    "retrieved_at_utc": "2026-10-10T14:25:06+00:00",
+    "count": 3324,
     "first": "2003-01-02",
-    "latest": "2026-10-08",
-    "latest_period": "26/107",
-    "sha256": "e9b7d723a88af615ca3a720bc640aeb58590904e792f08d35e85fa9017578a7a",
+    "latest": "2026-10-10",
+    "latest_period": "26/108",
+    "sha256": "6969b8a75917b2d284a766abe1b4700201cb3e39aaaffdb81ebd07eae2b18b48",
     "evidence": {
       "mode": "official_recent_refresh",
-      "recent_official_results": 92,
+      "recent_official_results": 93,
       "previously_verified": 3323
     },
     "history_bootstrap": {
@@ -23,24 +23,24 @@
     "legacy_data_used_for_model": false
   },
   "latest_draw": {
-    "period": "26/107",
-    "date": "2026-10-08",
+    "period": "26/108",
+    "date": "2026-10-10",
     "main": [
-      18,
-      19,
-      24,
-      31,
-      40,
-      44
+      12,
+      14,
+      20,
+      33,
+      34,
+      37
     ],
-    "special": 5,
-    "source_id": "2026107N"
+    "special": 31,
+    "source_id": "2026108N"
   },
-  "next_draw_date": "2026-10-10",
+  "next_draw_date": "2026-10-13",
   "next_draw_date_status": "官方已定義",
   "next_draw_evidence": {
-    "date": "2026-10-10",
-    "source_id": "2026108N",
+    "date": "2026-10-13",
+    "source_id": "2026109N",
     "status": "Defined",
     "source": "https://info.cld.hkjc.com/graphql/base/"
   },
@@ -54,7 +54,7 @@
         "development_rounds": 400,
         "evaluation_hits": 23,
         "evaluation_rounds": 120,
-        "evaluation_top9_hits": 140,
+        "evaluation_top9_hits": 142,
         "total_hits": 87,
         "evaluation_one_sided_p": 0.01922011
       },
@@ -72,7 +72,7 @@
         "development_rounds": 400,
         "evaluation_hits": 17,
         "evaluation_rounds": 120,
-        "evaluation_top9_hits": 138,
+        "evaluation_top9_hits": 139,
         "total_hits": 74,
         "evaluation_one_sided_p": 0.2984221
       },
@@ -81,7 +81,7 @@
         "development_rounds": 400,
         "evaluation_hits": 15,
         "evaluation_rounds": 120,
-        "evaluation_top9_hits": 145,
+        "evaluation_top9_hits": 143,
         "total_hits": 78,
         "evaluation_one_sided_p": 0.5074302
       },
@@ -107,38 +107,38 @@
       41,
       4,
       5,
+      12,
       14,
       19,
       26,
       40,
       1,
       11,
-      12,
       16,
       18,
       20,
       25,
-      28,
       29,
       30,
       32,
       35,
       2,
       17,
+      28,
+      33,
+      37,
       43,
       45,
       10,
       15,
       21,
-      23,
       27,
-      33,
-      37,
       48,
-      6,
       8,
+      23,
       44,
       46,
+      6,
       13,
       22,
       24,
@@ -158,26 +158,26 @@
       41,
       4,
       5,
-      14
+      12
     ],
     "single": 7,
     "score_kind": "相對排序分數，不是中獎機率"
   },
   "live_audit": {
-    "forecasts": 1,
-    "settled": 0,
+    "forecasts": 2,
+    "settled": 1,
     "hits": 0,
-    "chain_tip": "e45cee1bd15c030b3c815b102c335592aeae91d4b943a1a9e5ed652dfaf7c152"
+    "chain_tip": "46c1b59f39451ce395673d4baf66451fad2958bf3c3789df75a5645765b8cc19"
   },
   "sealed_forecast": {
-    "based_on_date": "2026-10-08",
-    "based_on_period": "26/107",
-    "created_at_utc": "2026-10-08T16:33:27+00:00",
-    "hash": "e45cee1bd15c030b3c815b102c335592aeae91d4b943a1a9e5ed652dfaf7c152",
+    "based_on_date": "2026-10-10",
+    "based_on_period": "26/108",
+    "created_at_utc": "2026-10-10T14:25:07+00:00",
+    "hash": "46c1b59f39451ce395673d4baf66451fad2958bf3c3789df75a5645765b8cc19",
     "kind": "forecast",
     "model": "bayes_60",
-    "official_data_sha256": "e9b7d723a88af615ca3a720bc640aeb58590904e792f08d35e85fa9017578a7a",
-    "previous_hash": "0000000000000000000000000000000000000000000000000000000000000000",
+    "official_data_sha256": "6969b8a75917b2d284a766abe1b4700201cb3e39aaaffdb81ebd07eae2b18b48",
+    "previous_hash": "46b37da6cf7a74d856b4228d5f4cf3a8dfd78ee509c8cbb6f6838f9b077d17d5",
     "single": 7,
     "target": "首次晚於依據期別的下一次官方攪珠；日期待官方公告",
     "top9": [
@@ -189,7 +189,7 @@
       41,
       4,
       5,
-      14
+      12
     ]
   },
   "confidence_label": "僅觀察排序・未證實高機率",

@@ -1,10 +1,10 @@
 {
   "healthy": true,
   "status": "官方資料校驗通過；預測僅觀察級",
-  "checked_at": "2026-10-10T17:03:11+08:00",
-  "latest_period": "26/107",
-  "latest_date": "2026-10-08",
-  "verified_rows": 3323,
+  "checked_at": "2026-10-10T22:25:07+08:00",
+  "latest_period": "26/108",
+  "latest_date": "2026-10-10",
+  "verified_rows": 3324,
   "source": "HKJC GraphQL",
   "legacy_data_used": false
 }
