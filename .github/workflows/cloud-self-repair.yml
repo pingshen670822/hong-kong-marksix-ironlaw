@@ -3,6 +3,9 @@ on:
   workflow_run:
     workflows: ["香港六合彩新核心自動更新"]
     types: [completed]
+  schedule:
+    # 獨立於主流程：主排程漏觸發且戰報逾時時才啟動修復。
+    - cron: "23,53 * * * *"
   workflow_dispatch:
 permissions:
   contents: write
@@ -11,7 +14,7 @@ concurrency:
   cancel-in-progress: false
 jobs:
   repair:
-    if: github.event_name == 'workflow_dispatch' || github.event.workflow_run.conclusion == 'failure'
+    if: github.event_name == 'schedule' || github.event_name == 'workflow_dispatch' || github.event.workflow_run.conclusion == 'failure'
     runs-on: ubuntu-latest
     timeout-minutes: 35
     steps:
@@ -19,9 +22,16 @@ jobs:
         with: {ref: main}
       - uses: actions/setup-python@v7
         with: {python-version: "3.12"}
-      - run: pip install numpy==2.3.5
+      - name: 判斷主流程是否漏跑或資料逾時
+        id: guard
+        env:
+          EVENT_NAME: ${{ github.event_name }}
+        run: python -m v9.schedule_guard
+      - if: steps.guard.outputs.run_repair == 'true'
+        run: pip install numpy==2.3.5
       - name: 第二層重新抓取與自主修復
         id: repair_run
+        if: steps.guard.outputs.run_repair == 'true'
         continue-on-error: true
         run: python -m v9.watchdog
       - name: 修復成功後重新完整稽核
@@ -37,7 +47,7 @@ jobs:
           git add data reports site docs
           git diff --cached --quiet || (git commit -m "六合彩官方資料第二層自主修復 [skip ci]" && git push)
       - name: 修復仍失敗時保留診斷狀態
-        if: steps.repair_run.outcome != 'success'
+        if: steps.guard.outputs.run_repair == 'true' && steps.repair_run.outcome != 'success'
         env:
           RUN_ID: ${{ github.run_id }}
         run: |
@@ -54,5 +64,5 @@ jobs:
           git add reports/repair_status.json site/repair_status.json docs/repair_status.json reports/health_status.json site/health_status.json docs/health_status.json reports/self_test_report.json site/self_test_report.json docs/self_test_report.json reports/cloud_failure_status.json site/cloud_failure_status.json docs/cloud_failure_status.json
           git diff --cached --quiet || (git commit -m "六合彩第二層救援持續重試中" && git push)
       - name: 標記第二層救援尚未完成
-        if: steps.repair_run.outcome != 'success'
+        if: steps.guard.outputs.run_repair == 'true' && steps.repair_run.outcome != 'success'
         run: exit 1

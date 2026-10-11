@@ -1,6 +1,7 @@
 import json
 import tempfile
 import unittest
+from datetime import datetime, timedelta, timezone
 from pathlib import Path
 
 import numpy as np
@@ -9,10 +10,28 @@ from v9.data import MANIFEST_PATH, load_verified
 from v9.ledger import _append, load_events
 from v9.model import FAIR_SINGLE, binomial_tail, candidate_scores, rank, replay
 from v9.official_source import _parse
-from v9 import watchdog
+from v9 import schedule_guard, watchdog
 
 
 class OfficialRebuildTests(unittest.TestCase):
+    def test_independent_repair_schedule_runs_only_when_stale(self):
+        now = datetime(2026, 10, 11, 8, 0, tzinfo=timezone.utc)
+        version = {"schema": "marksix_official_v9", "latest_period": "26/108",
+                   "latest_date": "2026-10-10",
+                   "updated_at": (now - timedelta(minutes=20)).isoformat()}
+        health = {"healthy": True, "latest_period": "26/108", "latest_date": "2026-10-10"}
+        self_test = {"operational_passed": True, "latest_period": "26/108",
+                     "latest_date": "2026-10-10"}
+        self.assertFalse(schedule_guard.should_repair("schedule", version, health, self_test, now))
+        health["healthy"] = False
+        self.assertTrue(schedule_guard.should_repair("schedule", version, health, self_test, now))
+        health["healthy"] = True
+        version["updated_at"] = (now - timedelta(minutes=90)).isoformat()
+        self.assertTrue(schedule_guard.should_repair("schedule", version, health, self_test, now))
+        version["updated_at"] = "invalid"
+        self.assertTrue(schedule_guard.should_repair("schedule", version, health, self_test, now))
+        self.assertTrue(schedule_guard.should_repair("workflow_dispatch", {}, {}, {}, now))
+
     def test_mobile_report_has_read_only_public_fallback(self):
         root = Path(__file__).resolve().parents[1]
         report = (root / "reports" / "index.html").read_text(encoding="utf-8")
