@@ -1,10 +1,10 @@
 {
   "schema": "marksix_official_v9",
-  "generated_at": "2026-10-11T16:34:55+08:00",
+  "generated_at": "2026-10-11T17:21:37+08:00",
   "official_data": {
     "source": "香港賽馬會官方 GraphQL 已公布攪珠結果",
     "endpoint": "https://info.cld.hkjc.com/graphql/base/",
-    "retrieved_at_utc": "2026-10-11T08:34:54+00:00",
+    "retrieved_at_utc": "2026-10-11T09:21:37+00:00",
     "count": 3324,
     "first": "2003-01-02",
     "latest": "2026-10-10",
@@ -162,6 +162,64 @@
     ],
     "single": 7,
     "score_kind": "相對排序分數，不是中獎機率"
+  },
+  "calculation_trace": {
+    "input_sha256": "6969b8a75917b2d284a766abe1b4700201cb3e39aaaffdb81ebd07eae2b18b48",
+    "based_on_period": "26/108",
+    "based_on_date": "2026-10-10",
+    "selected_model": "bayes_60",
+    "current_first": 7,
+    "previous_same_model_first": 7,
+    "current_top9": [
+      7,
+      31,
+      34,
+      47,
+      9,
+      41,
+      4,
+      5,
+      12
+    ],
+    "previous_same_model_top9": [
+      7,
+      31,
+      34,
+      47,
+      9,
+      41,
+      4,
+      5,
+      14
+    ],
+    "last60_main_counts_top9": {
+      "7": 17,
+      "31": 16,
+      "34": 13,
+      "47": 12,
+      "9": 11,
+      "41": 11,
+      "4": 10,
+      "5": 10,
+      "12": 9
+    },
+    "current_first_last60_count": 17,
+    "previous_first_last60_count": 17,
+    "runner_up": 31,
+    "runner_up_last60_count": 16,
+    "first_rank_unchanged": true,
+    "interpretation": "最近60期出現次數只產生相對排序，不是下一期中獎機率"
+  },
+  "full_official_audit": {
+    "current": true,
+    "checked_at": "2026-10-11T17:19:29+08:00",
+    "matched_count": 3324,
+    "stored_csv_sha256": "6969b8a75917b2d284a766abe1b4700201cb3e39aaaffdb81ebd07eae2b18b48"
+  },
+  "update_state": {
+    "new_draw_since_previous_report": false,
+    "previous_report_period": "26/108",
+    "current_period": "26/108"
   },
   "live_audit": {
     "forecasts": 2,

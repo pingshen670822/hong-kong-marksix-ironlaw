@@ -4,11 +4,13 @@ from __future__ import annotations
 import html
 import hashlib
 import json
+from collections import Counter
 from datetime import datetime, timedelta, timezone
 from pathlib import Path
 
 from .data import ROOT
 from .official_source import SOURCE_URL, OfficialDraw
+from .model import as_matrix, candidate_scores, rank
 
 HKT = timezone(timedelta(hours=8))
 OUTPUTS = (ROOT / "reports", ROOT / "site", ROOT / "docs")
@@ -32,6 +34,42 @@ def build_report(draws: list[OfficialDraw], manifest: dict, model: dict, ledger:
     selected = model["models"][model["selected_model"]]
     observation = "僅觀察排序・未證實高機率" if not model["statistical_edge_passed"] else "回放顯示統計訊號・仍待前瞻實戰"
     target_note = (f"官方已定義下一期 {_safe(upcoming['date'])}／{_safe(upcoming['source_id'])}" if upcoming else "官方下一期日期暫未取得；禁止猜測")
+    recent_counts = Counter(number for draw in draws[-60:] for number in draw.main)
+    prior_counts = Counter(number for draw in draws[-61:-1] for number in draw.main)
+    prior_rank = rank(candidate_scores(as_matrix(draws[:-1]))[model["selected_model"]])
+    single = model["single"]
+    runner_up = model["rank"][1]
+    calculation_trace = {
+        "input_sha256": manifest["sha256"], "based_on_period": latest.period,
+        "based_on_date": latest.draw_date, "selected_model": model["selected_model"],
+        "current_first": single, "previous_same_model_first": prior_rank[0],
+        "current_top9": model["top9"], "previous_same_model_top9": prior_rank[:9],
+        "last60_main_counts_top9": {str(number): recent_counts[number] for number in model["top9"]},
+        "current_first_last60_count": recent_counts[single],
+        "previous_first_last60_count": prior_counts[single],
+        "runner_up": runner_up, "runner_up_last60_count": recent_counts[runner_up],
+        "first_rank_unchanged": single == prior_rank[0],
+        "interpretation": "最近60期出現次數只產生相對排序，不是下一期中獎機率",
+    }
+    try:
+        full_audit = json.loads((ROOT / "reports" / "full_official_audit.json").read_text(encoding="utf-8"))
+    except (OSError, ValueError):
+        full_audit = {}
+    try:
+        prior_analysis = json.loads((ROOT / "reports" / "latest_analysis.json").read_text(encoding="utf-8"))
+        prior_period = prior_analysis["latest_draw"]["period"]
+    except (OSError, ValueError, KeyError, TypeError):
+        prior_period = None
+    new_draw = prior_period is not None and prior_period != latest.period
+    update_note = (f"本次加入新的官方開獎：{_safe(latest.period)}。" if new_draw
+                   else "本次重新運算，但官方尚無更新一期；輸入開獎資料未變，第一順位可能重複。")
+    full_audit_current = (full_audit.get("matched") is True
+                          and full_audit.get("stored_csv_sha256") == manifest["sha256"]
+                          and full_audit.get("stored_count") == len(draws)
+                          and full_audit.get("official_count") == len(draws))
+    audit_note = (f"{_safe(full_audit['checked_at'])} 全量重新抓取：{len(draws):,}/{len(draws):,} 期逐筆一致，缺漏 0、衝突 0。"
+                  if full_audit_current else "現版資料尚未完成全量重新抓取比對；不得宣稱全史逐筆核驗通過。")
+    count_rows = "".join(f"<tr><td>{number:02d}</td><td>{recent_counts[number]}</td></tr>" for number in model["top9"])
     analysis = {
         "schema": "marksix_official_v9",
         "generated_at": now,
@@ -42,6 +80,12 @@ def build_report(draws: list[OfficialDraw], manifest: dict, model: dict, ledger:
         "next_draw_date_status": "官方已定義" if upcoming else "官方下一期日期尚未由本資料介面驗證，禁止猜測",
         "next_draw_evidence": upcoming,
         "model": {key: value for key, value in model.items() if key != "selected_replay_rows"},
+        "calculation_trace": calculation_trace,
+        "full_official_audit": {"current": full_audit_current, "checked_at": full_audit.get("checked_at"),
+                                "matched_count": full_audit.get("matched_count"),
+                                "stored_csv_sha256": full_audit.get("stored_csv_sha256")},
+        "update_state": {"new_draw_since_previous_report": new_draw,
+                         "previous_report_period": prior_period, "current_period": latest.period},
         "live_audit": {key: value for key, value in ledger.items() if key != "latest_forecast"},
         "sealed_forecast": {key: value for key, value in ledger["latest_forecast"].items() if key != "ranking"},
         "confidence_label": observation,
@@ -73,9 +117,16 @@ def build_report(draws: list[OfficialDraw], manifest: dict, model: dict, ledger:
 <small>手動核對會比對本站與公開 GitHub 戰報；本站快照延遲時僅顯示已核驗的較新版本。真正重新抓取需登入 GitHub 啟動流程，網頁不持有任何憑證。</small></header>
 <section class="card good"><h2>官方已公布最新一期</h2><div class="grid"><div class="metric"><span class="label">期別／日期</span><b>{_safe(latest.period)}・{_safe(latest.draw_date)}</b></div><div class="metric"><span class="label">官方原始識別碼</span><b>{_safe(latest.source_id)}</b></div></div><p>{balls} ＋ <span class="ball rank">{latest.special:02d}</span></p>
 <p class="muted">官方資料：<a href="{_safe(SOURCE_URL)}" target="_blank" rel="noopener">香港賽馬會六合彩結果</a>；本次直接由官方結果介面取得，不以第三方資料補缺。</p></section>
+<section class="card"><h2>這次到底更新了什麼？</h2><p><b>{update_note}</b></p><p>本次戰報重算時間：{_safe(now)}；最新官方開獎日期：{_safe(latest.draw_date)}。戰報時間更新不等於有新開獎，更不等於預測機率提高。</p></section>
 <section class="card warning"><h2>下一期研究排序：{model['single']:02d}</h2><div class="number">{model['single']:02d}</div><p><b>{_safe(observation)}</b>。這是 {_safe(model['selected_model'])} 的相對排序第 1 名，不是中獎機率、必中或投注建議。</p>
 <p>適用於晚於 {_safe(latest.draw_date)}／{_safe(latest.period)} 的下一次官方攪珠；<b>{target_note}</b>。</p><div>{top9}</div><p class="muted">前九碼僅供分開驗證，不得冒充獨支命中率。</p></section>
+<section class="card"><h2>本期重算依據，不是必中證明</h2>
+<p>輸入截止 {_safe(latest.draw_date)}／{_safe(latest.period)}；資料 SHA-256：<code>{_safe(manifest['sha256'])}</code>；選用模型 {_safe(model['selected_model'])}。</p>
+<p>第一順位 {single:02d} 在最近 60 期正碼出現 {recent_counts[single]} 次；第二順位 {runner_up:02d} 出現 {recent_counts[runner_up]} 次。上次用同一模型計算時，{single:02d} 出現 {prior_counts[single]} 次、第一順位為 {prior_rank[0]:02d}。<b>{'本次重算後第一順位未變，並非新開獎號碼。' if single == prior_rank[0] else '本次重算後第一順位已改變。'}</b></p>
+<div class="tablewrap"><table><thead><tr><th>本期前九排序</th><th>最近60期正碼次數</th></tr></thead><tbody>{count_rows}</tbody></table></div>
+<p class="muted">出現次數只描述過去，不代表下一期更容易開出；封存實戰目前 {ledger['hits']}/{ledger['settled']}，不得標示高信心。</p></section>
 <section class="card"><h2>真實資料與來源審計</h2><div class="grid"><div class="metric"><span class="label">官方逐月抓取</span><b>{len(draws):,}期</b></div><div class="metric"><span class="label">採用年代</span><b>{_safe(draws[0].draw_date)} 起</b></div><div class="metric"><span class="label">舊資料投入新模型</span><b>0 期</b></div></div>
+<p><b>全史再抓核對：</b>{audit_note}</p>
 <p>資料檔 SHA-256：<code>{_safe(manifest['sha256'])}</code></p><p>舊版來源標籤聲稱「馬會核對」，但舊匯入程式沒有做該核對；且曾把 49 球制以前的結果用同一機率基準運算。新系統不沿用這些標籤或舊回測數字。</p></section>
 <section class="card"><h2>固定時序回放（不是前瞻實戰）</h2><p>前 400 期選模型，後 120 期不再調整選擇。單號公平基準為 6/49＝12.24%。五模型多重比較後，選定模型的評估 p 值為 {model['evaluation_adjusted_p']:.4f}；<b>{'達統計門檻，但仍待前瞻驗證' if model['statistical_edge_passed'] else '未達 0.05 門檻，禁止標高信心'}</b>。</p>
 <div class="tablewrap"><table><thead><tr><th>固定模型</th><th>前400期獨支</th><th>後120期獨支</th><th>後120期前九均中</th><th>單側 p 值</th></tr></thead><tbody>{model_rows}</tbody></table></div><p class="muted">選定模型後 120 期獨支 {selected['evaluation_hits']}/120；此數字不能替代今後開獎前封存的實戰。</p></section>

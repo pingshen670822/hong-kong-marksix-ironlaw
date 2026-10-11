@@ -11,9 +11,19 @@ from v9.ledger import _append, load_events
 from v9.model import FAIR_SINGLE, binomial_tail, candidate_scores, rank, replay
 from v9.official_source import _parse
 from v9 import schedule_guard, watchdog
+from v9.full_official_audit import compare
+from v9.official_source import OfficialDraw
 
 
 class OfficialRebuildTests(unittest.TestCase):
+    def test_full_official_audit_detects_missing_or_changed_draw(self):
+        draw = OfficialDraw("26/108", "2026-10-10", (12, 14, 20, 33, 34, 37), 31, "2026108N")
+        self.assertTrue(compare([draw], [draw], "sha")["matched"])
+        altered = OfficialDraw("26/108", "2026-10-10", (12, 14, 20, 33, 34, 38), 31, "2026108N")
+        result = compare([draw], [altered], "sha")
+        self.assertFalse(result["matched"])
+        self.assertEqual(result["mismatched_dates"], ["2026-10-10"])
+
     def test_independent_repair_schedule_runs_only_when_stale(self):
         now = datetime(2026, 10, 11, 8, 0, tzinfo=timezone.utc)
         version = {"schema": "marksix_official_v9", "latest_period": "26/108",
