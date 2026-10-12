@@ -246,6 +246,7 @@ def verify_release(path):
         if Path(name).name!=name or digest((path/name).read_bytes())!=sha: raise ValueError('Release checksum mismatch: '+name)
     a=json.loads((path/'latest_analysis.json').read_text()); version=json.loads((path/'version.json').read_text()); health=json.loads((path/'health_status.json').read_text())
     if not a['release_id']==version['hash']==release['release_id']==health['release_id']: raise ValueError('Mixed release metadata')
+    if 'self_test_report.json' in release['files'] and (path/'self_test_report.json').read_bytes()!=(path/'health_status.json').read_bytes(): raise ValueError('Self-test and health status differ')
     original={k:v for k,v in a.items() if k!='release_id'}
     if digest(canonical(original))!=a['release_id']: raise ValueError('Analysis identity mismatch')
     for name in ('index.html','latest_battle_report.html'):
@@ -282,9 +283,12 @@ def run(root=ROOT, *, now=None, online=False, fetcher=fetch_months, upcoming_fet
         a=analyze(draws,manifest,coverage,model,events,seal,legacy,code_sha,now,'online' if online else 'offline',target)
         a['legacy']['sha256']=digest((root/'data/v9_forecast_events.jsonl').read_bytes())
         a['release_id']=digest(canonical(a)); rid=a['release_id']
+        health={'release_id':rid,'operational_passed':True,'source_live_checked':online,'currentness':a['currentness'],'formal_qualified':False,
+                'prediction_gate_passed':False,'latest_period':draws[-1].period,'latest_date':draws[-1].draw_date,
+                'status':'官方資料已核驗；正式預測未達資格' if online else '已驗證快照；尚未即時核對官方最新開獎'}
         files={'official.csv':raw,'manifest.json':canonical(manifest),'forecast_events.jsonl':ledger,'latest_analysis.json':canonical(a),
                'version.json':canonical({'schema':'marksix_v10','hash':rid,'updated_at':a['generated_at'],'latest_period':draws[-1].period,'latest_date':draws[-1].draw_date,'code_sha256':code_sha}),
-               'health_status.json':canonical({'release_id':rid,'operational_passed':True,'source_live_checked':online,'currentness':a['currentness'],'formal_qualified':False})}
+               'health_status.json':canonical(health),'self_test_report.json':canonical(health)}
         html=render(a).encode(); files['index.html']=html; files['latest_battle_report.html']=html
         releases=root/'releases'; releases.mkdir(exist_ok=True)
         staging=Path(tempfile.mkdtemp(prefix='.staging-',dir=releases))

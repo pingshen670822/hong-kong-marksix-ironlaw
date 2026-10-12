@@ -107,6 +107,10 @@ class V10Tests(unittest.TestCase):
         a=self.build(); self.assertEqual(a['evidence']['prospective_rounds'],0); self.assertGreater(a['legacy']['events'],0)
     def test_release_all_files_and_embedded_identity(self):
         a=self.build(); verified=core.verify_release(self.root/'current'); self.assertEqual(a,verified)
+        health=json.loads((self.root/'current/self_test_report.json').read_text())
+        self.assertEqual(health['release_id'],a['release_id']); self.assertEqual(health['latest_period'],a['latest_draw']['period'])
+        self.assertFalse(health['prediction_gate_passed']); self.assertFalse(health['formal_qualified'])
+        self.assertEqual((self.root/'current/self_test_report.json').read_bytes(),(self.root/'current/health_status.json').read_bytes())
         html=(self.root/'current/latest_battle_report.html').read_text(); self.assertIn(a['release_id'],html); self.assertIn('marksix-report-version',html)
 
 if __name__=='__main__': unittest.main()
