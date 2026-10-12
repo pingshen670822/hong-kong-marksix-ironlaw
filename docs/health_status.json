@@ -1,10 +1,1 @@
-{
-  "healthy": true,
-  "status": "官方資料校驗通過；預測僅觀察級",
-  "checked_at": "2026-10-12T10:18:12+08:00",
-  "latest_period": "26/108",
-  "latest_date": "2026-10-10",
-  "verified_rows": 3324,
-  "source": "HKJC GraphQL",
-  "legacy_data_used": false
-}
+{"currentness":{"age_seconds":0.0,"reason":"Official source checked during this run","status":"fresh_verified"},"formal_qualified":false,"operational_passed":true,"release_id":"5c07c006d5dde476c07cf13133e849d5ba408e2d3355fec4f0c46761258d6fa2","source_live_checked":true}
