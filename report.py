@@ -1,6 +1,3 @@
-"""Active report module: generated solely from verified v9 inputs."""
-
-from v9.report import build_report
-
-
-__all__ = ["build_report"]
+"""Build an explicitly offline V10 snapshot."""
+from v10_runner import main
+if __name__ == "__main__": raise SystemExit(main(["build"]))

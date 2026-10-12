@@ -7,10 +7,10 @@ on:
       - 'reports/**'
       - 'site/**'
       - 'docs/**'
+      - 'v10_system/releases/**'
+      - 'v10_system/CURRENT'
   schedule:
-    # 避開 GitHub Actions 整點高負載；兩次錯峰檢查涵蓋常態及臨時開彩日。
     - cron: "11,41 * * * *"
-    # 香港時間21:20後密集檢查，並延伸至開獎後兩小時監控。
     - cron: "20-55/5 13 * * *"
     - cron: "0-30/5 14 * * *"
     - cron: "35-55/5 15 * * *"
@@ -28,34 +28,21 @@ jobs:
       - uses: actions/checkout@v7
       - uses: actions/setup-python@v7
         with: {python-version: "3.12"}
-      - run: pip install numpy==2.3.5
-      - name: 官方來源抓取、全新模型重算與自修復
-        run: python -m v9.watchdog
-      - name: 官方來源、封存鏈與手機戰報完整稽核
-        run: python -m v9.verify
-      - name: 新核心單元測試
-        run: python -m unittest tests.test_v9 -v
-      - name: 成功後同步完整手機雲端
+      - run: pip install -r v10_system/requirements.txt
+      - name: 還原已驗證 V10 發布指標
+        run: python v10_runner.py init
+      - name: V10 資料、數學、封存、交易及舊版回歸測試
+        working-directory: v10_system
+        run: python -m unittest discover -s tests -v
+      - name: 官方更新並準備完整同版本報表
+        run: python v10_runner.py update
+      - name: 驗證原生輸出及舊頁相容輸出
+        run: python v10_runner.py verify
+      - name: 同一提交同步完整戰報與封存歷史
         if: success()
         run: |
           git config user.name "hk-marksix-engine-bot"
           git config user.email "actions@github.com"
-          git add data reports site docs
-          git diff --cached --quiet || (git commit -m "六合彩官方資料新核心自動更新 [skip ci]" && git push)
-      - name: 失敗時保留雲端故障證據
-        if: failure()
-        env:
-          RUN_ID: ${{ github.run_id }}
-        run: |
-          python - <<'PY'
-          import json,os
-          from datetime import datetime,timezone
-          from pathlib import Path
-          payload={"status":"主更新失敗，第二層雲端救援即將啟動","run_id":os.environ["RUN_ID"],"recorded_at":datetime.now(timezone.utc).isoformat()}
-          for base in ("reports","site","docs"):
-              Path(base,"cloud_failure_status.json").write_text(json.dumps(payload,ensure_ascii=False,indent=2),encoding="utf-8")
-          PY
-          git config user.name "hk-marksix-repair-bot"
-          git config user.email "actions@github.com"
-          git add reports/repair_status.json site/repair_status.json docs/repair_status.json reports/health_status.json site/health_status.json docs/health_status.json reports/self_test_report.json site/self_test_report.json docs/self_test_report.json reports/cloud_failure_status.json site/cloud_failure_status.json docs/cloud_failure_status.json
-          git diff --cached --quiet || (git commit -m "記錄六合彩雲端故障並啟動救援" && git push)
+          git add -- v10_system/CURRENT v10_system/releases reports site docs
+          git diff --cached --quiet || (git commit -m "六合彩 V10 官方驗證發布 [skip ci]" && git push)
+      # Failure intentionally makes no public commit: keep the entire last-good release.

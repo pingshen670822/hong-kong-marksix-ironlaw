@@ -4,7 +4,6 @@ on:
     workflows: ["香港六合彩新核心自動更新"]
     types: [completed]
   schedule:
-    # 獨立於主流程：主排程漏觸發且戰報逾時時才啟動修復。
     - cron: "23,53 * * * *"
   workflow_dispatch:
 permissions:
@@ -22,47 +21,26 @@ jobs:
         with: {ref: main}
       - uses: actions/setup-python@v7
         with: {python-version: "3.12"}
-      - name: 判斷主流程是否漏跑或資料逾時
+      - run: pip install -r v10_system/requirements.txt
+      - name: 檢查 V10 主流程是否失敗或逾時
         id: guard
         env:
           EVENT_NAME: ${{ github.event_name }}
-        run: python -m v9.schedule_guard
-      - if: steps.guard.outputs.run_repair == 'true'
-        run: pip install numpy==2.3.5
-      - name: 第二層重新抓取與自主修復
-        id: repair_run
+        run: python v10_runner.py guard
+      - name: 完整回歸與故障復原測試
         if: steps.guard.outputs.run_repair == 'true'
-        continue-on-error: true
-        run: python -m v9.watchdog
-      - name: 修復成功後重新完整稽核
-        if: steps.repair_run.outcome == 'success'
+        working-directory: v10_system
+        run: python -m unittest discover -s tests -v
+      - name: 以 V10 重新更新並驗證
+        if: steps.guard.outputs.run_repair == 'true'
         run: |
-          python -m v9.verify
-          python -m unittest tests.test_v9 -v
-      - name: 修復成功後同步完整資料與手機戰報
-        if: steps.repair_run.outcome == 'success'
+          python v10_runner.py update
+          python v10_runner.py verify
+      - name: 僅成功後同一提交發布
+        if: steps.guard.outputs.run_repair == 'true' && success()
         run: |
           git config user.name "hk-marksix-repair-bot"
           git config user.email "actions@github.com"
-          git add data reports site docs
-          git diff --cached --quiet || (git commit -m "六合彩官方資料第二層自主修復 [skip ci]" && git push)
-      - name: 修復仍失敗時保留診斷狀態
-        if: steps.guard.outputs.run_repair == 'true' && steps.repair_run.outcome != 'success'
-        env:
-          RUN_ID: ${{ github.run_id }}
-        run: |
-          python - <<'PY'
-          import json,os
-          from datetime import datetime,timezone
-          from pathlib import Path
-          payload={"status":"第二層救援仍在等待外部資料源恢復；主排程將於下次時段再次重試","run_id":os.environ["RUN_ID"],"recorded_at":datetime.now(timezone.utc).isoformat()}
-          for base in ("reports","site","docs"):
-              Path(base,"cloud_failure_status.json").write_text(json.dumps(payload,ensure_ascii=False,indent=2),encoding="utf-8")
-          PY
-          git config user.name "hk-marksix-repair-bot"
-          git config user.email "actions@github.com"
-          git add reports/repair_status.json site/repair_status.json docs/repair_status.json reports/health_status.json site/health_status.json docs/health_status.json reports/self_test_report.json site/self_test_report.json docs/self_test_report.json reports/cloud_failure_status.json site/cloud_failure_status.json docs/cloud_failure_status.json
-          git diff --cached --quiet || (git commit -m "六合彩第二層救援持續重試中" && git push)
-      - name: 標記第二層救援尚未完成
-        if: steps.guard.outputs.run_repair == 'true' && steps.repair_run.outcome != 'success'
-        run: exit 1
+          git add -- v10_system/CURRENT v10_system/releases reports site docs
+          git diff --cached --quiet || (git commit -m "六合彩 V10 第二層驗證發布 [skip ci]" && git push)
+      # Failure records remain in Actions logs; no partial status/report overwrite.

@@ -1,0 +1,10 @@
+current
+__pycache__/
+*.pyc
+.update.lock
+.ci.lock
+.CURRENT.*
+.restore-current
+.rollback-*
+.current-*
+releases/.staging-*
