@@ -121,5 +121,6 @@ class LegacyProjectionTests(unittest.TestCase):
             self.assertEqual(v['schema'],'marksix_official_v9'); self.assertEqual(a['schema'],v['schema']); self.assertEqual(a['engine_schema'],'marksix_v10')
             self.assertEqual(v['updated_at'],a['generated_at']); self.assertEqual(core.stamp(v['updated_at']),core.stamp(a['canonical_generated_at']))
             self.assertEqual(v['latest_period'],a['latest_draw']['period']); self.assertEqual(v['latest_date'],a['latest_draw']['date']); self.assertTrue(h['operational_passed']); self.assertEqual(h['latest_period'],v['latest_period'])
+            self.assertFalse(h['prediction_gate_passed']); self.assertFalse(h['formal_qualified']); self.assertIn('正式預測未達資格',h['status'])
             html=(target/'index.html').read_text(); self.assertIn(f'content="{v["hash"]}"',html); self.assertIn(f'content="{v["latest_period"]}"',html); self.assertFalse(result['published'])
             self.assertEqual(core.digest((target/'canonical_v10_analysis.json').read_bytes()),a['canonical_analysis_sha256'])

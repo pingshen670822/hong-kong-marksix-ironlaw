@@ -24,7 +24,7 @@ def legacy_files(source):
     a=verify_release(source); timestamp=stamp(a['generated_at']).astimezone(HKT).isoformat()
     version={'schema':'marksix_official_v9','engine_schema':'marksix_v10','transport':'v9_loader_compatibility_only','hash':a['release_id'],'updated_at':timestamp,'latest_period':a['latest_draw']['period'],'latest_date':a['latest_draw']['date']}
     projected={**a,'schema':'marksix_official_v9','engine_schema':'marksix_v10','transport':'v9_loader_compatibility_only','canonical_generated_at':a['generated_at'],'generated_at':timestamp,'canonical_analysis_sha256':digest((source/'latest_analysis.json').read_bytes())}
-    health={'operational_passed':True,'formal_qualified':False,'engine_schema':'marksix_v10','latest_period':a['latest_draw']['period'],'latest_date':a['latest_draw']['date'],'release_id':a['release_id'],'currentness':a['currentness']}
+    health={'operational_passed':True,'prediction_gate_passed':False,'status':'官方資料已核驗；正式預測未達資格','formal_qualified':False,'engine_schema':'marksix_v10','latest_period':a['latest_draw']['period'],'latest_date':a['latest_draw']['date'],'release_id':a['release_id'],'currentness':a['currentness']}
     files={'version.json':canonical(version),'latest_analysis.json':canonical(projected),'self_test_report.json':canonical(health),'health_status.json':canonical(health),'index.html':(source/'index.html').read_bytes(),'latest_battle_report.html':(source/'index.html').read_bytes(),'canonical_v10_analysis.json':(source/'latest_analysis.json').read_bytes()}
     files['compatibility_manifest.json']=canonical({'release_id':a['release_id'],'engine_schema':'marksix_v10','files':{n:digest(b) for n,b in files.items()}})
     return files
@@ -39,7 +39,7 @@ def validate_outputs(repo, root=ROOT):
         if Path(name).name!=name or digest((directory/name).read_bytes())!=sha: raise ValueError('Legacy output file checksum mismatch')
     v=json.loads((directory/'version.json').read_text()); p=json.loads((directory/'latest_analysis.json').read_text()); h=json.loads((directory/'self_test_report.json').read_text())
     if v['schema']!='marksix_official_v9' or p['schema']!=v['schema'] or p['engine_schema']!='marksix_v10': raise ValueError('Invalid explicit compatibility schema')
-    if v['hash']!=expected or h['release_id']!=expected or v['updated_at']!=p['generated_at'] or v['latest_period']!=p['latest_draw']['period'] or h['latest_period']!=v['latest_period'] or not h['operational_passed']: raise ValueError('Mixed compatibility metadata')
+    if v['hash']!=expected or h['release_id']!=expected or v['updated_at']!=p['generated_at'] or v['latest_period']!=p['latest_draw']['period'] or h['latest_period']!=v['latest_period'] or not h['operational_passed'] or h['prediction_gate_passed'] or h['formal_qualified']: raise ValueError('Mixed compatibility metadata')
     if (directory/'index.html').read_bytes()!=(root/'current/index.html').read_bytes(): raise ValueError('Compatibility HTML is not canonical report')
     return a
 

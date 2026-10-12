@@ -14,7 +14,7 @@ def export_legacy(destination):
     timestamp=stamp(a['generated_at']).astimezone(HKT).isoformat()
     version={'schema':'marksix_official_v9','engine_schema':'marksix_v10','transport':'v9_loader_compatibility_only','hash':a['release_id'],'updated_at':timestamp,'latest_period':a['latest_draw']['period'],'latest_date':a['latest_draw']['date']}
     projected={**a,'schema':'marksix_official_v9','engine_schema':'marksix_v10','transport':'v9_loader_compatibility_only','canonical_generated_at':a['generated_at'],'generated_at':timestamp,'canonical_analysis_sha256':digest((source/'latest_analysis.json').read_bytes())}
-    health={'operational_passed':True,'formal_qualified':False,'engine_schema':'marksix_v10','latest_period':a['latest_draw']['period'],'latest_date':a['latest_draw']['date'],'release_id':a['release_id'],'currentness':a['currentness']}
+    health={'operational_passed':True,'prediction_gate_passed':False,'status':'官方資料已核驗；正式預測未達資格','formal_qualified':False,'engine_schema':'marksix_v10','latest_period':a['latest_draw']['period'],'latest_date':a['latest_draw']['date'],'release_id':a['release_id'],'currentness':a['currentness']}
     files={'version.json':canonical(version),'latest_analysis.json':canonical(projected),'self_test_report.json':canonical(health),'index.html':(source/'index.html').read_bytes(),'latest_battle_report.html':(source/'index.html').read_bytes(),'canonical_v10_analysis.json':(source/'latest_analysis.json').read_bytes()}
     for marker in [a['release_id'],a['latest_draw']['period']]:
         if f'content="{marker}"'.encode() not in files['index.html']: raise ValueError('Legacy HTML identity mismatch')
