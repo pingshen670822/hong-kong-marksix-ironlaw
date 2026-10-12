@@ -1,9 +1,3 @@
-"""Compatibility integrity audit; only the v9 official-source audit is active."""
-
-from v9.verify import verify
-
-
-if __name__ == "__main__":
-    import json
-
-    print(json.dumps(verify(), ensure_ascii=False, indent=2))
+"""Verify V10 prepared output, without claiming an independent full-history refetch."""
+from v10_runner import main
+if __name__ == "__main__": raise SystemExit(main(["verify"]))
