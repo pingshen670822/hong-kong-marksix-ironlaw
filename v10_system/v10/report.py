@@ -172,6 +172,33 @@ def render(analysis: dict) -> str:
     rank_html = "".join(f'<li><span class="rank-position">{i}</span><span>{_number(n)}</span></li>'
                         for i, n in enumerate(_numbers(research.get("rank")), 1))
     rank_html = rank_html or '<li class="muted">未提供完整排序</li>'
+    model_results = _mapping(research.get("model_results"))
+    families = {"baseline": "原有基準", "frequency_window": "區間頻率",
+                "exponential_recency": "指數近期權重", "cross_draw_transition": "跨期條件",
+                "same_draw_cooccurrence": "同期开奖共現", "fixed_weight_blend": "固定權重混合"}
+    model_rows = []
+    for item in research.get("catalog", []):
+        if not isinstance(item, Mapping) or item.get("name") not in model_results:
+            continue
+        result = _mapping(model_results[item["name"]])
+        selected_mark = "（本期選中）" if item["name"] == research.get("model") else ""
+        model_rows.append(
+            f'<tr><th scope="row">{_safe(item["name"])}{selected_mark}</th>'
+            f'<td>{_safe(families.get(item.get("family"), item.get("family")))}</td>'
+            f'<td>{_safe(item.get("parameter"), "—")}</td>'
+            f'<td>{_number(result.get("current_first"))}</td>'
+            f'<td>{_ratio(result.get("development_hits"), result.get("development_rounds"))}</td>'
+            f'<td>{_ratio(result.get("evaluation_hits"), result.get("evaluation_rounds"))}</td>'
+            f'<td><code>{_safe(result.get("rank_sha256"))}</code></td></tr>')
+    model_audit = (f'''<section class="card wide" id="models" aria-labelledby="models-title">
+<h2 id="models-title">50 條研究規則：運算與驗證</h2>
+<p>本次實際計算 <strong>{len(model_rows)} / 50</strong> 條固定規則：5 條原有基準，加上五類各 9 條參數變體。每一期只用當期之前的官方開獎資料；前 400 期挑選規則，後 120 期保留評估。結果可核對，但高度相關的變體不是 50 份獨立證據。</p>
+<p class="fine">區間頻率計算指定期數的正碼出現率；指數近期權重讓較近資料有較高權重；跨期條件比較指定間隔前的號碼重疊；同期开奖共現比較上一期號碼與歷史同期开奖的重疊；固定權重混合只合併既有分數。這些都是可重算的描述性規則，並非已發現的開獎規律。</p>
+<p class="notice">選中規則的單尾檢驗以 50 倍 Bonferroni 校正；歷史回放仍不是事先登記的前瞻證據，不代表下期中獎機率或保證。</p>
+<p class="fine">選擇與驗證規則：{_safe(research.get("selection_rule"))}</p>
+<details><summary>展開全部 50 條規則的逐項結果</summary><div class="table-scroll"><table><thead><tr><th scope="col">規則</th><th scope="col">類別</th><th scope="col">參數</th><th scope="col">當前第一順位</th><th scope="col">開發期</th><th scope="col">評估期</th><th scope="col">當前排序 SHA-256</th></tr></thead><tbody>{''.join(model_rows)}</tbody></table></div></details>
+</section>''' if len(model_rows) == 50 else '')
+    model_nav = '<a href="#models">50 條規則</a>' if model_audit else ''
     payload = {
         "generatedAt": _plain(a.get("generated_at"), ""),
         "retrievedAt": _plain(data.get("retrieved_at_utc"), ""),
@@ -227,6 +254,7 @@ def render(analysis: dict) -> str:
 *{{box-sizing:border-box}}html{{scroll-behavior:smooth;scroll-padding-top:20px}}body{{margin:0;background:var(--bg);color:var(--ink);line-height:1.65}}main{{width:min(1080px,100%);margin:auto;padding:24px 20px 40px}}a{{color:#14596c;text-underline-offset:3px}}a:hover{{text-decoration-thickness:2px}}button{{font:inherit;cursor:pointer}}:focus-visible{{outline:3px solid #bb7900;outline-offset:4px}}.skip{{position:absolute;left:12px;top:-100px;background:white;padding:10px;z-index:3}}.skip:focus{{top:10px}}
 header{{padding:27px 28px;border-radius:20px;background:#153c4a;color:white}}header p{{max-width:70ch;margin:9px 0 0;color:#d7e8ed}}h1{{font-size:clamp(1.5rem,4vw,2.1rem);line-height:1.3;margin:10px 0}}h2{{font-size:1.18rem;line-height:1.4;margin:0 0 14px}}h3{{font-size:1rem;margin:0 0 8px}}p{{margin:10px 0}}.eyebrow{{font-size:.78rem;font-weight:750;letter-spacing:.1em;text-transform:uppercase}}.pills{{display:flex;gap:8px;flex-wrap:wrap}}.pill{{font-size:.8rem;padding:3px 10px;border:1px solid #60818d;border-radius:100px;background:#214b59}}.toolbar{{display:flex;align-items:center;gap:15px;flex-wrap:wrap;margin-top:18px}}.reload{{padding:10px 15px;border:1px solid #fff;border-radius:9px;background:#fff;color:#153c4a;font-weight:700;min-height:44px}}.reload:hover{{background:#e8f2f5}}header .fine{{font-size:.82rem;color:#e0ebef}}nav{{display:flex;gap:12px 18px;flex-wrap:wrap;margin:17px 3px;font-size:.9rem}}
 .banner{{border:1px solid #dec68d;border-left:5px solid #b17d20;border-radius:12px;background:var(--warn-bg);color:var(--warn);padding:15px 18px;margin:18px 0}}.banner p{{margin:0}}.banner .fine{{margin-top:5px;color:#6b552a}}.layout{{display:grid;grid-template-columns:1fr 1fr;gap:18px}}.card{{background:var(--paper);border:1px solid var(--line);border-radius:16px;padding:23px;min-width:0}}.wide{{grid-column:1/-1}}.formal{{border-top:4px solid #758791}}.research{{border-top:4px solid #3c788a}}.kicker{{font-size:.85rem;color:var(--muted);margin-bottom:3px}}.blank{{font-size:3rem;line-height:1.25;font-weight:750;color:#647780;margin:6px 0}}.research-first{{display:flex;gap:17px;align-items:center;margin-bottom:15px}}.first-number{{font-variant-numeric:tabular-nums;font-size:2.45rem;font-weight:800;line-height:1.2;color:#24596a}}.muted{{color:var(--muted)}}.fine{{font-size:.83rem}}.notice{{padding:11px 13px;background:#f2f6f7;border-radius:9px;font-size:.89rem}}.balls{{display:flex;flex-wrap:wrap;gap:8px;list-style:none;margin:12px 0;padding:0}}.ball{{display:grid;place-items:center;flex:0 0 39px;width:39px;height:39px;border:1px solid #b7ccd2;border-radius:50%;font-weight:750;font-variant-numeric:tabular-nums;background:#f0f6f7;color:#193f4d}}.research-ball{{background:#eaf2f5;color:#21596a;border-color:#b6d1da}}.special{{display:flex;gap:10px;align-items:center;margin-top:12px}}.special .ball{{background:#fff5e2;border-color:#d9bf89;color:#704b11}}.draw-heading{{display:flex;justify-content:space-between;gap:10px;flex-wrap:wrap;margin-bottom:4px}}.draw-period{{font-size:1.14rem;font-weight:750}}.baseline-grid,.metrics{{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:12px}}.baseline-grid{{grid-template-columns:repeat(2,minmax(0,1fr));margin:15px 0}}.metric{{background:#f3f7f8;border-radius:10px;padding:14px;min-width:0}}.metric strong{{display:block;font-size:1.09rem;margin:5px 0;font-variant-numeric:tabular-nums}}.metric p{{margin:0;font-size:.82rem;color:var(--muted)}}.metric .label{{font-size:.85rem;color:#425d68}}dl{{margin:0}}.facts>div{{display:grid;grid-template-columns:minmax(130px,30%) minmax(0,1fr);gap:12px;padding:10px 0;border-bottom:1px solid #e6edef}}.facts>div:last-child{{border:0}}dt{{color:var(--muted);font-size:.87rem}}dd{{margin:0;overflow-wrap:anywhere;min-width:0}}code{{font-family:ui-monospace,SFMono-Regular,Consolas,monospace;font-size:.82rem;overflow-wrap:anywhere;word-break:break-all}}details{{margin-top:14px}}summary{{font-weight:650;cursor:pointer;padding:8px 0;min-height:44px}}.ranking-list{{display:grid;grid-template-columns:repeat(auto-fit,minmax(65px,1fr));gap:7px;list-style:none;padding:0;margin:10px 0}}.ranking-list li{{border:1px solid var(--line);border-radius:8px;padding:6px 9px;display:flex;justify-content:space-between;gap:6px;font-weight:650;font-variant-numeric:tabular-nums}}.ranking-list .rank-position{{font-weight:400;font-size:.75rem;color:var(--muted)}}footer{{font-size:.81rem;color:var(--muted);padding:22px 3px 0}}[hidden]{{display:none!important}}
+.table-scroll{{overflow-x:auto}}table{{border-collapse:collapse;width:100%;min-width:860px;font-size:.78rem}}th,td{{padding:8px;border-bottom:1px solid var(--line);text-align:left;vertical-align:top}}tbody th{{font-weight:650}}td code{{font-size:.72rem;word-break:normal;white-space:nowrap}}
 @media(max-width:720px){{main{{padding:14px 12px 28px}}header{{padding:22px 20px;border-radius:15px}}.layout{{grid-template-columns:minmax(0,1fr);gap:14px}}.card{{padding:19px}}.metrics{{grid-template-columns:1fr}}.facts>div{{grid-template-columns:1fr;gap:3px}}nav{{gap:9px 15px}}.baseline-grid{{gap:9px}}.metric{{padding:12px}}.ball{{flex-basis:36px;width:36px;height:36px}}}}
 @media(max-width:360px){{.baseline-grid{{grid-template-columns:1fr}}.card{{padding:16px}}h1{{font-size:1.45rem}}}}
 @media(prefers-reduced-motion:reduce){{html{{scroll-behavior:auto}}}}
@@ -244,7 +272,7 @@ header{{padding:27px 28px;border-radius:20px;background:#153c4a;color:white}}hea
 <div class="toolbar"><button class="reload" type="button" id="reload-page">重新載入本頁</button><span class="fine">報告產生：{_safe(a.get("generated_at"))}</span></div>
 <p class="fine" id="refresh-help">按鈕只重新載入這份頁面，不會抓取官方資料或啟動雲端重算；可能仍載入同一份快照。</p>
 </header>
-<nav aria-label="報告章節"><a href="#formal">正式資格</a><a href="#research">研究排序</a><a href="#evidence">驗證證據</a><a href="#audit">版本與稽核</a></nav>
+<nav aria-label="報告章節"><a href="#formal">正式資格</a><a href="#research">研究排序</a><a href="#evidence">驗證證據</a>{model_nav}<a href="#audit">版本與稽核</a></nav>
 <aside class="banner" id="freshness-banner" role="status" aria-live="polite" aria-atomic="true">
 <p id="freshness-message">{initial_banner}</p>
 <p class="fine" id="source-age">來源擷取：{_safe(data.get("retrieved_at_utc"))}。時效上限：24 小時。</p>
@@ -304,6 +332,7 @@ header{{padding:27px 28px;border-radius:20px;background:#153c4a;color:white}}hea
 </div>
 <p class="fine muted">上述基準以公平的 49 球攪珠為前提。模型分數類型：{_safe(_explain(research.get("score_kind")))}。本頁不宣稱任何號碼具有已證實的預測優勢。</p>
 </section>
+{model_audit}
 <section class="card" aria-labelledby="repeat-title">
 <h2 id="repeat-title">重複順位檢查</h2>
 <p>{repeat_note}</p>

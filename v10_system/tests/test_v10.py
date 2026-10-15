@@ -1,9 +1,9 @@
-import copy, csv, io, json, shutil, tempfile, unittest
+import copy, csv, hashlib, io, json, shutil, tempfile, unittest
 from datetime import datetime, timedelta, timezone
 from pathlib import Path
 from unittest.mock import patch
 from v10 import core
-from v9.model import replay, binomial_tail, candidate_scores, rank, as_matrix
+from v10.model50 import replay, binomial_tail, candidate_scores, rank, as_matrix, MODEL_NAMES
 
 NOW=datetime(2026,10,12,3,45,tzinfo=timezone.utc)
 class V10Tests(unittest.TestCase):
@@ -47,8 +47,10 @@ class V10Tests(unittest.TestCase):
         first=candidate_scores(matrix[:-1]); altered=matrix.copy(); altered[-1]=0
         other=candidate_scores(altered[:-1])
         for key in first: np.testing.assert_array_equal(first[key],other[key])
-        self.assertEqual(self.model['single'],7); self.assertEqual(self.model['models']['bayes_60']['evaluation_hits'],23)
-        self.assertAlmostEqual(binomial_tail(120,23)*5,self.model['evaluation_adjusted_p'],7)
+        self.assertEqual(len(MODEL_NAMES),50); self.assertEqual(len(first),50)
+        self.assertEqual(self.model['single'],self.model['rank'][0]); self.assertEqual(self.model['models']['bayes_60']['evaluation_hits'],23)
+        chosen=self.model['models'][self.model['selected_model']]['evaluation_hits']
+        self.assertAlmostEqual(min(1,binomial_tail(120,chosen)*50),self.model['evaluation_adjusted_p'],7)
         self.assertFalse(self.model['statistical_edge_passed'])
     def test_normal_extra_baselines_and_formal_blank(self):
         a=self.build(); self.assertEqual(a['research']['normal_baseline'],6/49); self.assertEqual(a['research']['extra_baseline'],1/49); self.assertIsNone(a['formal']['single']); self.assertEqual(a['currentness']['status'],'snapshot')
@@ -57,6 +59,8 @@ class V10Tests(unittest.TestCase):
         self.assertEqual(raw,(self.root/'current/forecast_events.jsonl').read_bytes()); self.assertEqual(a['release_id'],b['release_id'])
     def test_changed_model_does_not_replace_seal(self):
         a=self.build(); m=copy.deepcopy(self.model); m['rank']=list(reversed(m['rank'])); m['single']=m['rank'][0]; m['top9']=m['rank'][:9]
+        m['models'][m['selected_model']]['current_first']=m['single']
+        m['models'][m['selected_model']]['rank_sha256']=hashlib.sha256(bytes(m['rank'])).hexdigest()
         with patch.object(core,'replay',return_value=m): b=core.run(self.root,now=NOW+timedelta(seconds=1))
         self.assertEqual(a['seal'],b['seal']); self.assertTrue(b['research']['differs_from_seal']); self.assertIsNone(b['formal']['single'])
     def test_partial_update_failure_preserves_release_and_ledger(self):
@@ -89,7 +93,9 @@ class V10Tests(unittest.TestCase):
         with self.assertRaises(ValueError): core.verify_release(self.root/'current')
         with self.assertRaises(ValueError): self.build()
     def test_ledger_tamper_rejected(self):
-        a=self.build(); raw=(self.root/'current/forecast_events.jsonl').read_bytes().replace(b'"single":7',b'"single":8')
+        a=self.build(); raw=(self.root/'current/forecast_events.jsonl').read_bytes()
+        needle=f'"single":{a["seal"]["single"]}'.encode(); replacement=f'"single":{a["seal"]["single"]%49+1}'.encode()
+        raw=raw.replace(needle,replacement,1)
         with self.assertRaises(ValueError): core.load_chain(raw)
     def test_hkt_same_day_settlement_is_excluded_and_idempotent(self):
         prior=self.draws[:-1]; target=core.target_evidence(None,prior[-1],NOW); seal_time=datetime(2026,10,9,17,tzinfo=timezone.utc)
@@ -112,6 +118,8 @@ class V10Tests(unittest.TestCase):
         self.assertFalse(health['prediction_gate_passed']); self.assertFalse(health['formal_qualified'])
         self.assertEqual((self.root/'current/self_test_report.json').read_bytes(),(self.root/'current/health_status.json').read_bytes())
         html=(self.root/'current/latest_battle_report.html').read_text(); self.assertIn(a['release_id'],html); self.assertIn('marksix-report-version',html)
+        self.assertIn('50 條研究規則',html); self.assertEqual(a['research']['candidate_count'],50)
+        self.assertEqual(len(a['research']['model_results']),50)
 
 if __name__=='__main__': unittest.main()
 

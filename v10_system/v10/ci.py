@@ -7,7 +7,7 @@ import argparse, json, os, re, shutil, tempfile
 from contextlib import contextmanager
 from datetime import datetime, timezone
 from pathlib import Path
-from .core import ROOT, run, verify_release, stamp, digest, canonical, HKT
+from .core import ROOT, run, verify_release, verify_model_computation, validate, stamp, digest, canonical, HKT
 
 def restore_current(root=ROOT):
     text=(root/'CURRENT').read_text().strip()
@@ -95,5 +95,9 @@ def main(argv=None):
     elif args.command=='build':
         restore_current(); result=publish_worktree(ROOT.parent,updater=lambda:run())
     else:
-        restore_current(); result={'release_id':validate_outputs(ROOT.parent)['release_id'],'verified':True}
+        restore_current(); a=validate_outputs(ROOT.parent)
+        raw=(ROOT/'current/official.csv').read_bytes(); manifest=json.loads((ROOT/'current/manifest.json').read_text())
+        draws,_=validate(raw,manifest,stamp(a['generated_at']))
+        result={'release_id':a['release_id'],'verified':True,
+                'fifty_rules_recomputed':verify_model_computation(a,draws)}
     print(json.dumps(result,ensure_ascii=False,indent=2));return 0

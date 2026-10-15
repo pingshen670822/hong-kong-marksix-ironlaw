@@ -9,13 +9,13 @@ from contextlib import contextmanager
 from datetime import date, datetime, timedelta, timezone
 from pathlib import Path
 from v9.official_source import OfficialDraw, ENDPOINT, fetch_months, fetch_upcoming
-from v9.model import replay
+from .model50 import replay
 from v9.ledger import load_events as load_legacy
 
 ROOT = Path(__file__).resolve().parents[1]
 UTC = timezone.utc
 HKT = timezone(timedelta(hours=8))
-VERSION = '10.0.0'
+VERSION = '10.1.0'
 MAX_SOURCE_AGE = 86400
 FIELDS = ['period','draw_date','n1','n2','n3','n4','n5','n6','special','source_id']
 GENESIS = '0' * 64
@@ -236,7 +236,7 @@ def analyze(draws,manifest,coverage,model,events,seal,legacy,code_sha,now,mode,t
         'currentness':{'status':status,'age_seconds':age,'reason':'Official source checked during this run' if status=='fresh_verified' else 'Offline verified snapshot; latest official result is not freshly confirmed' if status=='snapshot' else 'Source receipt older than 24 hours'},
         'latest_draw':{'period':latest.period,'date':latest.draw_date,'main':list(latest.main),'special':latest.special},'target':target,
         'formal':{'single':None,'status':'unqualified','reason':'Research-only policy: no preregistered prospective validation establishes a predictive edge'},
-        'research':{'model':model['selected_model'],'rank':model['rank'],'top9':model['top9'],'single':model['single'],'score_kind':'Relative ranking only, not a winning probability. bayes_60 is exactly the last-60 frequency ordering with numeric tie-breaks.','adjusted_p':model['evaluation_adjusted_p'],'normal_baseline':6/49,'extra_baseline':1/49,'repeat_guard':{'repeated':run>1,'consecutive':run,'scope':'distinct basis draws across preserved V9 and V10 research seals; not performance pooling','warning':'Repeated research number is not extra confidence; formal selection remains blank'},'differs_from_seal':model['rank']!=seal['ranking'],'evaluation_window':[model['selected_replay_rows'][-120]['date'],model['selected_replay_rows'][-1]['date']]},
+        'research':{'model':model['selected_model'],'rank':model['rank'],'top9':model['top9'],'single':model['single'],'score_kind':model['score_kind'],'adjusted_p':model['evaluation_adjusted_p'],'candidate_count':model['candidate_count'],'catalog':model['catalog'],'model_results':model['models'],'selection_rule':model['rule'],'normal_baseline':6/49,'extra_baseline':1/49,'repeat_guard':{'repeated':run>1,'consecutive':run,'scope':'distinct basis draws across preserved V9 and V10 research seals; not performance pooling','warning':'Repeated research number is not extra confidence; formal selection remains blank'},'differs_from_seal':model['rank']!=seal['ranking'],'evaluation_window':[model['selected_replay_rows'][-120]['date'],model['selected_replay_rows'][-1]['date']]},
         'evidence':{**{k:selected[k] for k in ('development_rounds','development_hits','evaluation_rounds','evaluation_hits')},'prospective_rounds':len(scored),'prospective_hits':sum(e['normal_hit'] for e in scored),'qualification':'Not established; rolling historical holdout is exploratory, not independent prospective proof'},
         'seal':seal,'legacy':{'sha256':digest((ROOT/'data/v9_forecast_events.jsonl').read_bytes()),'events':len(legacy),'settlements':len(oldsettled),'hits':sum(e['single_hit'] for e in oldsettled),'caveat':'Imported V9 ledger retained unchanged; not V10 prospective performance. Local hash chains are tamper-evident, not independent timestamps.'}}
 
@@ -257,8 +257,42 @@ def verify_release(path):
     audit_chain(events,draws,stamp(a['generated_at']))
     scored=[e for e in events if e['kind']=='settlement' and e['eligible']]
     if a['evidence']['prospective_rounds']!=len(scored) or a['evidence']['prospective_hits']!=sum(e['normal_hit'] for e in scored): raise ValueError('Report score differs from verified settlements')
+    if a.get('version')=='10.1.0':
+        research=a['research']; catalog=research['catalog']; results=research['model_results']
+        if research['candidate_count']!=50 or len(catalog)!=50 or len(results)!=50 or {row['name'] for row in catalog}!=set(results):
+            raise ValueError('Incomplete 50-rule research audit')
+        if research['model'] not in results or results[research['model']]['current_first']!=research['single']:
+            raise ValueError('Selected research rule and current ranking disagree')
+        if any(row['name'] not in results or results[row['name']]['family']!=row['family'] or
+               results[row['name']]['parameter']!=row['parameter'] or
+               results[row['name']]['development_rounds']!=400 or
+               results[row['name']]['evaluation_rounds']!=120 for row in catalog):
+            raise ValueError('50-rule results do not match registered rules or validation windows')
     if a['formal']['single'] is not None: raise ValueError('Unqualified formal output')
     return a
+
+def verify_model_computation(a, draws):
+    """Recompute every research rule from the verified official rows.
+
+    The release checker can inspect old immutable releases after code changes;
+    this stronger check is used for the newly prepared current release before
+    its Git commit and publication.
+    """
+    if a.get('version')!='10.1.0': return False
+    calculated=replay(draws); research=a['research']; evidence=a['evidence']
+    expected=(('candidate_count',calculated['candidate_count']),
+              ('catalog',calculated['catalog']),('model_results',calculated['models']),
+              ('model',calculated['selected_model']),('rank',calculated['rank']),
+              ('top9',calculated['top9']),('single',calculated['single']),
+              ('adjusted_p',calculated['evaluation_adjusted_p']),
+              ('selection_rule',calculated['rule']))
+    if any(research.get(key)!=value for key,value in expected):
+        raise ValueError('Published 50-rule calculation differs from independent rerun')
+    chosen=calculated['models'][calculated['selected_model']]
+    if any(evidence.get(key)!=chosen[key] for key in
+           ('development_rounds','development_hits','evaluation_rounds','evaluation_hits')):
+        raise ValueError('Published research validation totals differ from independent rerun')
+    return True
 
 def run(root=ROOT, *, now=None, online=False, fetcher=fetch_months, upcoming_fetcher=fetch_upcoming, fail_at=None):
     now=now or datetime.now(UTC)
